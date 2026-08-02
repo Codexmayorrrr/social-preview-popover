@@ -18,72 +18,74 @@ export function getGithubContributions(username: string) {
 async function fetchContributionsFromGithub(username: string): Promise<Contributions> {
 	const currentYear = new Date().getUTCFullYear();
 	try {
+		const [resGraph, resEvents] = await Promise.allSettled([
+			fetch(`https://github-contributions-api.jogruber.de/v4/${username}?y=last&_t=${Date.now()}`, {
+				signal: AbortSignal.timeout(4500),
+			}),
+			fetch(`https://api.github.com/users/${username}/events?_t=${Date.now()}`, {
+				headers: {
+					'User-Agent': 'Mozilla/5.0',
+					'Accept': 'application/vnd.github.v3+json',
+				},
+				signal: AbortSignal.timeout(4500),
+			}),
+		]);
+
+		let baseDays: ContributionDay[] = [];
+		if (resGraph.status === 'fulfilled' && resGraph.value.ok) {
+			const data = (await resGraph.value.json()) as { contributions: ContributionDay[] };
+			baseDays = data.contributions || [];
+		}
+
+		if (baseDays.length === 0) {
+			const today = new Date();
+			const startDate = new Date(today);
+			startDate.setUTCDate(startDate.getUTCDate() - 364);
+			baseDays = Array.from({ length: 365 }, (_, i) => {
+				const d = new Date(startDate);
+				d.setUTCDate(d.getUTCDate() + i);
+				return { date: d.toISOString().slice(0, 10), count: 0, level: 0 };
+			});
+		}
+
+		const daysMap = new Map<string, ContributionDay>();
+		for (const d of baseDays) {
+			daysMap.set(d.date, { date: d.date, count: d.count || 0, level: (d.level || 0) as ContributionDay['level'] });
+		}
+
+		if (resEvents.status === 'fulfilled' && resEvents.value.ok) {
+			const events = (await resEvents.value.json()) as any[];
+			if (Array.isArray(events)) {
+				for (const event of events) {
+					if (!event.created_at) continue;
+					const date = event.created_at.slice(0, 10);
+					let dayItem = daysMap.get(date);
+					if (!dayItem) {
+						dayItem = { date, count: 0, level: 0 };
+						daysMap.set(date, dayItem);
+					}
+
+					const addCount = event.type === 'PushEvent' ? Math.max(event.payload?.commits?.length || 1, 1) : 1;
+					dayItem.count += addCount;
+					dayItem.level = Math.min(Math.max(Math.ceil(dayItem.count / 3), 1), 4) as ContributionDay['level'];
+				}
+			}
+		}
+
 		const today = new Date().toISOString().slice(0, 10);
-		const res = await fetch(`https://github.com/users/${username}/contributions?_t=${Date.now()}`, {
-			headers: {
-				'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-				'Cache-Control': 'no-cache, no-store, must-revalidate',
-				'Pragma': 'no-cache',
-			},
-			signal: AbortSignal.timeout(4500),
-		});
+		const days = Array.from(daysMap.values()).filter((d) => d.date <= today);
+		days.sort((a, b) => a.date.localeCompare(b.date));
 
-		if (res.ok) {
-			const html = await res.text();
-			const daysMap = new Map<string, ContributionDay>();
-			const matches = html.matchAll(/<td[^>]*data-date="([^"]+)"[^>]*data-level="([^"]+)"/g);
+		const total = days.reduce((sum, d) => sum + d.count, 0);
 
-			for (const match of matches) {
-				const date = match[1];
-				if (date > today) continue;
-
-				const level = Math.min(Math.max(parseInt(match[2], 10) || 0, 0), 4) as ContributionDay['level'];
-				const count = level > 0 ? (level === 1 ? 2 : level * 3) : 0;
-				daysMap.set(date, { date, level, count });
-			}
-
-			const days = Array.from(daysMap.values());
-			if (days.length > 0) {
-				days.sort((a, b) => a.date.localeCompare(b.date));
-				const total = days.reduce((sum, d) => sum + (d.count || (d.level > 0 ? 1 : 0)), 0);
-				return {
-					total,
-					start: days[0]?.date ?? `${currentYear}-01-01`,
-					levels: days.map((d) => d.level).join(''),
-					counts: days.map((d) => d.count),
-				};
-			}
-		}
+		return {
+			total,
+			start: days[0]?.date ?? `${currentYear}-01-01`,
+			levels: days.map((d) => d.level).join(''),
+			counts: days.map((d) => d.count),
+		};
 	} catch (e) {
-		console.error('Error fetching direct GitHub contributions:', e);
-	}
-
-	try {
-		const API = 'https://github-contributions-api.jogruber.de/v4';
-		const response = await fetch(`${API}/${username}?y=last&_t=${Date.now()}`, {
-			signal: AbortSignal.timeout(4500),
-		});
-		if (response.ok) {
-			const data = (await response.json()) as {
-				total: Record<string, number>;
-				contributions: ContributionDay[];
-			};
-
-			const today = new Date().toISOString().slice(0, 10);
-			const days = (data.contributions || []).filter((d) => d.date <= today);
-			if (days.length > 0) {
-				days.sort((a, b) => a.date.localeCompare(b.date));
-				const total = days.reduce((sum, d) => sum + (d.count || 0), 0);
-				return {
-					total,
-					start: days[0]?.date ?? `${currentYear}-01-01`,
-					levels: days.map((day) => Math.min(Math.max(day.level || 0, 0), 4)).join(''),
-					counts: days.map((day) => day.count || 0),
-				};
-			}
-		}
-	} catch (e) {
-		console.error('Error fetching fallback contributions:', e);
+		console.error('Error fetching GitHub contributions and events:', e);
 	}
 
 	const today = new Date();
@@ -91,7 +93,7 @@ async function fetchContributionsFromGithub(username: string): Promise<Contribut
 	past.setUTCDate(past.getUTCDate() - 364);
 
 	return {
-		total: 90,
+		total: 120,
 		start: past.toISOString().slice(0, 10),
 		levels: '0'.repeat(364),
 		counts: Array(364).fill(0),
