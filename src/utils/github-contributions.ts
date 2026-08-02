@@ -16,8 +16,8 @@ export function getGithubContributions(username: string) {
 }
 
 async function fetchContributionsFromGithub(username: string): Promise<Contributions> {
+	const currentYear = new Date().getUTCFullYear();
 	try {
-		const currentYear = new Date().getUTCFullYear();
 		const today = new Date().toISOString().slice(0, 10);
 		const res = await fetch(`https://github.com/users/${username}/contributions?_t=${Date.now()}`, {
 			headers: {
@@ -75,7 +75,7 @@ async function fetchContributionsFromGithub(username: string): Promise<Contribut
 			const days = data.contributions.filter((d) => d.date <= today);
 			return {
 				total: days.reduce((sum, d) => sum + d.count, 0),
-				start: days[0]?.date ?? '',
+				start: days[0]?.date ?? `${currentYear}-01-01`,
 				levels: days.map((day) => day.level).join(''),
 				counts: days.map((day) => day.count),
 			};
@@ -84,7 +84,6 @@ async function fetchContributionsFromGithub(username: string): Promise<Contribut
 		console.error('Error fetching fallback contributions:', e);
 	}
 
-	const currentYear = new Date().getUTCFullYear();
 	return {
 		total: 142,
 		start: `${currentYear}-01-01`,
@@ -93,11 +92,25 @@ async function fetchContributionsFromGithub(username: string): Promise<Contribut
 	};
 }
 
-export function toWeeks({ start, levels, counts }: Contributions) {
+export function toWeeks(contributions: Contributions) {
+	const currentYear = new Date().getUTCFullYear();
+	let start = contributions?.start;
+	let levels = contributions?.levels;
+	let counts = contributions?.counts;
+
+	if (!start || isNaN(Date.parse(start))) {
+		start = `${currentYear}-01-01`;
+	}
+	if (!counts || counts.length === 0) {
+		counts = Array(213).fill(0);
+		levels = '0'.repeat(213);
+	}
+
 	const startDate = new Date(`${start}T00:00:00Z`);
 	const today = new Date().toISOString().slice(0, 10);
 	const weeks: (ContributionDay | undefined)[][] = [];
-	let week: (ContributionDay | undefined)[] = Array.from({ length: startDate.getUTCDay() });
+	const startDay = isNaN(startDate.getUTCDay()) ? 0 : startDate.getUTCDay();
+	let week: (ContributionDay | undefined)[] = Array.from({ length: startDay });
 
 	for (const [index, count] of counts.entries()) {
 		const date = new Date(startDate);
@@ -109,7 +122,7 @@ export function toWeeks({ start, levels, counts }: Contributions) {
 		week.push({
 			date: dateStr,
 			count,
-			level: Number(levels[index] ?? 0) as ContributionDay['level'],
+			level: Number(levels?.[index] ?? 0) as ContributionDay['level'],
 		});
 		if (week.length === 7) {
 			weeks.push(week);

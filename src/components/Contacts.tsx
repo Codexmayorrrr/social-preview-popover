@@ -45,7 +45,7 @@ export default function Contacts({
 	contributions = { total: 0, start: '', levels: '', counts: [] },
 	contributionsLabel = '142 contributions in 2026',
 	labels = {
-		linkedinHeadline: 'Design Engineer & Fullstack Developer',
+		linkedinHeadline: 'Design Engineer',
 		linkedinLocation: 'Remote',
 		linkedinCta: 'Connect',
 		maltAvailability: 'Available for projects',
@@ -191,10 +191,10 @@ export default function Contacts({
 												{githubProfile?.name || xProfile?.name || CONTACT.name}
 											</span>
 											<div className="mt-1 flex items-end justify-between gap-3">
-												<p className="text-muted text-xs leading-relaxed">
-													{githubProfile?.bio || xProfile?.bio || labels.linkedinHeadline}
+												<p className="text-muted text-xs leading-relaxed max-w-[140px]">
+													{labels?.linkedinHeadline || 'Design Engineer'}
 													<br />
-													{labels.linkedinLocation}
+													{labels?.linkedinLocation || 'Remote'}
 												</p>
 												<a
 													className="text-bg h-fit rounded-full bg-[#0A66C2] px-3.5 py-1 text-xs font-semibold transition-all hover:brightness-125 dark:bg-[#71B7FB] shadow-md shrink-0"
@@ -202,7 +202,7 @@ export default function Contacts({
 													target="_blank"
 													rel="noopener noreferrer"
 												>
-													{labels.linkedinCta}
+													{labels?.linkedinCta || 'Connect'}
 												</a>
 											</div>
 										</div>
@@ -219,7 +219,7 @@ export default function Contacts({
 												</span>
 												<p className="text-muted flex items-center gap-1.5 text-xs">
 													<span className="size-1.5 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)]" />
-													{labels.maltAvailability}
+													{labels?.maltAvailability || 'Available for projects'}
 												</p>
 											</div>
 										</div>
@@ -230,13 +230,13 @@ export default function Contacts({
 													<path fillRule="evenodd" d="M1.5 4.875C1.5 3.839 2.34 3 3.375 3h17.25c1.035 0 1.875.84 1.875 1.875v9.75c0 1.036-.84 1.875-1.875 1.875H3.375A1.875 1.875 0 0 1 1.5 14.625v-9.75ZM8.25 9.75a3.75 3.75 0 1 1 7.5 0 3.75 3.75 0 0 1-7.5 0ZM18.75 9a.75.75 0 0 0-.75.75v.008c0 .414.336.75.75.75h.008a.75.75 0 0 0 .75-.75V9.75a.75.75 0 0 0-.75-.75h-.008ZM4.5 9.75A.75.75 0 0 1 5.25 9h.008a.75.75 0 0 1 .75.75v.008a.75.75 0 0 1-.75.75H5.25a.75.75 0 0 1-.75-.75V9.75Z" clipRule="evenodd" />
 													<path d="M2.25 18a.75.75 0 0 0 0 1.5c5.4 0 10.63.722 15.6 2.075 1.2.324 2.4-.558 2.4-1.82V18.75a.75.75 0 0 0-.75-.75H2.25Z" />
 												</svg>
-												{labels.maltRate}
+												{labels?.maltRate || 'Contact for rates'}
 											</div>
 											<div className="flex items-center gap-1">
 												<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="size-4 shrink-0 text-muted">
 													<path fillRule="evenodd" d="m11.54 22.351.07.04.028.016a.76.76 0 0 0 .723 0l.028-.015.071-.041a16.975 16.975 0 0 0 1.144-.742 19.58 19.58 0 0 0 2.683-2.282c1.944-1.99 3.963-4.98 3.963-8.827a8.25 8.25 0 0 0-16.5 0c0 3.846 2.02 6.837 3.963 8.827a19.58 19.58 0 0 0 2.682 2.282 16.975 16.975 0 0 0 1.145.742ZM12 13.5a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z" clipRule="evenodd" />
 												</svg>
-												{labels.maltLocation}
+												{labels?.maltLocation || 'Remote'}
 											</div>
 										</div>
 										<div className="text-muted flex flex-wrap gap-2 text-xs">
@@ -273,7 +273,7 @@ export default function Contacts({
 													target="_blank"
 													rel="noopener noreferrer"
 												>
-													{labels.xCta}
+													{labels?.xCta || 'Follow'}
 												</a>
 											</div>
 											{(xProfile?.bio || githubProfile?.bio) && (
