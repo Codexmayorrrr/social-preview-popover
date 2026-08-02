@@ -89,14 +89,27 @@ export default function Contacts({
 	}
 
 	useLayoutEffect(() => {
-		if (open && popupElementRef.current) {
-			const rect = popupElementRef.current.getBoundingClientRect();
-			setPopupDimensions((prev) => ({
-				...prev,
-				width: Math.round(rect.width),
-				height: Math.round(rect.height),
-			}));
-		}
+		if (!open || !popupElementRef.current) return;
+
+		const updateDimensions = () => {
+			if (popupElementRef.current) {
+				const rect = popupElementRef.current.getBoundingClientRect();
+				setPopupDimensions((prev) => ({
+					...prev,
+					width: Math.round(rect.width),
+					height: Math.round(rect.height),
+				}));
+			}
+		};
+
+		updateDimensions();
+
+		const resizeObserver = new ResizeObserver(updateDimensions);
+		resizeObserver.observe(popupElementRef.current);
+
+		return () => {
+			resizeObserver.disconnect();
+		};
 	}, [open, contentIndex]);
 
 	return (
@@ -181,7 +194,7 @@ export default function Contacts({
 								)}
 
 								{contentIndex === 1 && (
-									<div className="w-2xs flex flex-col relative overflow-hidden rounded-xl">
+									<div className="w-[270px] flex flex-col relative overflow-hidden rounded-xl">
 										<div className="h-16 w-full bg-linear-to-br from-[#0A66C2] via-[#0A66C2]/80 to-[#0A66C2]/30" />
 										<div className="bg-surface absolute left-3.5 top-16 -translate-y-1/2 rounded-full p-0.5 shadow-lg [&_img]:size-14 [&_img]:rounded-full z-20">
 											<img src={avatarSrc} alt={CONTACT.name} className="size-14 rounded-full object-cover" />
@@ -250,11 +263,21 @@ export default function Contacts({
 								)}
 
 								{contentIndex === 3 && (
-									<div className="w-2xs flex flex-col relative overflow-hidden rounded-xl">
+									<div className="w-[270px] flex flex-col relative overflow-hidden rounded-xl">
 										<img
 											className="h-24 w-full object-cover"
 											src={xProfile?.bannerUrl || 'https://pbs.twimg.com/profile_banners/1694851611066044417/1776283207'}
 											alt=""
+											onLoad={() => {
+												if (popupElementRef.current) {
+													const rect = popupElementRef.current.getBoundingClientRect();
+													setPopupDimensions((prev) => ({
+														...prev,
+														width: Math.round(rect.width),
+														height: Math.round(rect.height),
+													}));
+												}
+											}}
 										/>
 										<div className="bg-surface absolute left-3.5 top-24 -translate-y-1/2 rounded-full p-0.5 shadow-lg [&_img]:size-14 [&_img]:rounded-full z-20">
 											<img src={avatarSrc} alt={CONTACT.name} className="size-14 rounded-full object-cover" />
