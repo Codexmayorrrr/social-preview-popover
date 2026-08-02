@@ -84,30 +84,34 @@ async function fetchContributionsFromGithub(username: string): Promise<Contribut
 		console.error('Error fetching fallback contributions:', e);
 	}
 
+	const today = new Date();
+	const past = new Date(today);
+	past.setUTCDate(past.getUTCDate() - 364);
+
 	return {
 		total: 142,
-		start: `${currentYear}-01-01`,
-		levels: '0'.repeat(213),
-		counts: Array(213).fill(0),
+		start: past.toISOString().slice(0, 10),
+		levels: '0'.repeat(364),
+		counts: Array(364).fill(0),
 	};
 }
 
 export function toWeeks(contributions: Contributions) {
-	const currentYear = new Date().getUTCFullYear();
+	const today = new Date();
 	let start = contributions?.start;
 	let levels = contributions?.levels;
 	let counts = contributions?.counts;
 
-	if (!start || isNaN(Date.parse(start))) {
-		start = `${currentYear}-01-01`;
-	}
-	if (!counts || counts.length === 0) {
-		counts = Array(213).fill(0);
-		levels = '0'.repeat(213);
+	if (!counts || counts.length === 0 || !start || isNaN(Date.parse(start))) {
+		const past = new Date(today);
+		past.setUTCDate(past.getUTCDate() - 364);
+		start = past.toISOString().slice(0, 10);
+		counts = Array(364).fill(0);
+		levels = '0'.repeat(364);
 	}
 
 	const startDate = new Date(`${start}T00:00:00Z`);
-	const today = new Date().toISOString().slice(0, 10);
+	const todayStr = today.toISOString().slice(0, 10);
 	const weeks: (ContributionDay | undefined)[][] = [];
 	const startDay = isNaN(startDate.getUTCDay()) ? 0 : startDate.getUTCDay();
 	let week: (ContributionDay | undefined)[] = Array.from({ length: startDay });
@@ -117,7 +121,7 @@ export function toWeeks(contributions: Contributions) {
 		date.setUTCDate(date.getUTCDate() + index);
 		const dateStr = date.toISOString().slice(0, 10);
 
-		if (dateStr > today) break;
+		if (dateStr > todayStr) break;
 
 		week.push({
 			date: dateStr,
