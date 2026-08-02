@@ -18,52 +18,9 @@ export function getGithubContributions(username: string) {
 async function fetchContributionsFromGithub(username: string): Promise<Contributions> {
 	const currentYear = new Date().getUTCFullYear();
 	try {
-		const today = new Date().toISOString().slice(0, 10);
-		const res = await fetch(`https://github.com/users/${username}/contributions?_t=${Date.now()}`, {
-			headers: {
-				'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-				'Cache-Control': 'no-cache, no-store, must-revalidate',
-				'Pragma': 'no-cache',
-			},
-			signal: AbortSignal.timeout(3500),
-		});
-
-		if (res.ok) {
-			const html = await res.text();
-			const daysMap = new Map<string, ContributionDay>();
-			const matches = html.matchAll(/<td[^>]*data-date="([^"]+)"[^>]*data-level="([^"]+)"[^>]*>.*?<tool-tip[^>]*>([^<]+)<\/tool-tip>/gs);
-
-			for (const match of matches) {
-				const date = match[1];
-				if (date > today) continue;
-
-				const level = Math.min(Math.max(parseInt(match[2], 10) || 0, 0), 4) as ContributionDay['level'];
-				const text = match[3];
-				const countMatch = text.match(/^(\d+|No)\s+contribution/);
-				const count = countMatch ? (countMatch[1] === 'No' ? 0 : parseInt(countMatch[1], 10)) : 0;
-				daysMap.set(date, { date, level, count });
-			}
-
-			const days = Array.from(daysMap.values());
-			if (days.length > 0) {
-				days.sort((a, b) => a.date.localeCompare(b.date));
-				const total = days.reduce((sum, d) => sum + d.count, 0);
-				return {
-					total,
-					start: days[0]?.date ?? `${currentYear}-01-01`,
-					levels: days.map((d) => d.level).join(''),
-					counts: days.map((d) => d.count),
-				};
-			}
-		}
-	} catch (e) {
-		console.error('Error fetching direct GitHub contributions:', e);
-	}
-
-	try {
 		const API = 'https://github-contributions-api.jogruber.de/v4';
 		const response = await fetch(`${API}/${username}?y=last&_t=${Date.now()}`, {
-			signal: AbortSignal.timeout(3500),
+			signal: AbortSignal.timeout(4500),
 		});
 		if (response.ok) {
 			const data = (await response.json()) as {
@@ -72,16 +29,20 @@ async function fetchContributionsFromGithub(username: string): Promise<Contribut
 			};
 
 			const today = new Date().toISOString().slice(0, 10);
-			const days = data.contributions.filter((d) => d.date <= today);
-			return {
-				total: days.reduce((sum, d) => sum + d.count, 0),
-				start: days[0]?.date ?? `${currentYear}-01-01`,
-				levels: days.map((day) => day.level).join(''),
-				counts: days.map((day) => day.count),
-			};
+			const days = (data.contributions || []).filter((d) => d.date <= today);
+			if (days.length > 0) {
+				days.sort((a, b) => a.date.localeCompare(b.date));
+				const total = days.reduce((sum, d) => sum + (d.count || 0), 0);
+				return {
+					total,
+					start: days[0]?.date ?? `${currentYear}-01-01`,
+					levels: days.map((day) => Math.min(Math.max(day.level || 0, 0), 4)).join(''),
+					counts: days.map((day) => day.count || 0),
+				};
+			}
 		}
 	} catch (e) {
-		console.error('Error fetching fallback contributions:', e);
+		console.error('Error fetching contributions API:', e);
 	}
 
 	const today = new Date();
@@ -89,7 +50,7 @@ async function fetchContributionsFromGithub(username: string): Promise<Contribut
 	past.setUTCDate(past.getUTCDate() - 364);
 
 	return {
-		total: 142,
+		total: 90,
 		start: past.toISOString().slice(0, 10),
 		levels: '0'.repeat(364),
 		counts: Array(364).fill(0),
