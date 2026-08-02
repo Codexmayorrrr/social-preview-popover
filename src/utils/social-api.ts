@@ -1,4 +1,4 @@
-const DEFAULT_AVATAR = 'https://media.licdn.com/dms/image/v2/D4D03AQFELmPgapFo2A/profile-displayphoto-crop_800_800/B4DZzJqvP1JoAI-/0/1772909972143?e=1787184000&v=beta&t=87CEe08Uw0QI06SL9KszajmR5KT35ujas9BGmsOZTt4';
+const DEFAULT_AVATAR = '/avatar.jpg';
 
 export async function getGithubProfile(username: string) {
 	try {
