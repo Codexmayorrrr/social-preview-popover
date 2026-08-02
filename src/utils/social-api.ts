@@ -4,7 +4,7 @@ export async function getGithubProfile(username: string) {
 		if (res.ok) {
 			const data = await res.json();
 			return {
-				name: data.name || data.login || 'Ayooluwabamidele',
+				name: data.name || 'Mayowa Ali',
 				login: data.login || username,
 				bio: data.bio || 'Design Engineer',
 				location: data.location || 'Remote',
@@ -15,7 +15,7 @@ export async function getGithubProfile(username: string) {
 		console.error('Error fetching GitHub profile:', e);
 	}
 	return {
-		name: 'Ayooluwabamidele',
+		name: 'Mayowa Ali',
 		login: username,
 		bio: 'Design Engineer',
 		location: 'Remote',
@@ -25,7 +25,7 @@ export async function getGithubProfile(username: string) {
 
 export async function getXProfile(handle: string) {
 	return {
-		name: 'Ayooluwabamidele',
+		name: 'Mayowa Ali',
 		handle: handle.startsWith('@') ? handle : `@${handle}`,
 		bio: 'Design Engineer',
 		followers: 1280,
