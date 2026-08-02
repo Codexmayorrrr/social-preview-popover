@@ -143,7 +143,7 @@ export default function Contacts({
 	return (
 		<div
 			ref={dockRef}
-			className="contacts-dock relative flex items-center gap-1 p-1.5 rounded-full bg-white/10 dark:bg-stone-900/60 backdrop-blur-2xl border border-white/20 dark:border-white/10 shadow-[0_10px_30px_-5px_rgba(0,0,0,0.3)] transition-all duration-300 touch-none select-none"
+			className="contacts-dock relative flex items-center gap-1.5 p-1.5 rounded-full bg-white/10 dark:bg-stone-900/60 backdrop-blur-2xl border border-white/20 dark:border-white/10 shadow-[0_10px_35px_-5px_rgba(0,0,0,0.35)] transition-all duration-300 touch-none select-none"
 			onMouseLeave={() => {
 				if (window.matchMedia('(hover: hover)').matches) {
 					setOpen(false);
@@ -151,56 +151,70 @@ export default function Contacts({
 			}}
 			role="presentation"
 		>
-			{items.map((item, index) => (
-				<a
-					key={index}
-					className="hover:[&_path]:fill-fg [&_path]:fill-muted z-10 p-2.5 rounded-full transition-all duration-200 hover:bg-white/15 dark:hover:bg-white/10 hover:scale-110 active:scale-95 touch-manipulation"
-					href={item.url}
-					target="_blank"
-					rel="noopener noreferrer"
-					aria-label={item.label}
-					onPointerEnter={(e) => handleHover(e, index)}
-					onClick={(e) => handleClick(e, index)}
-				>
-					{item.key === 'github' && (
-						<svg viewBox="0 0 24 24" className="size-6 fill-current transition-colors">
-							<path d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.53 1.032 1.53 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z" />
-						</svg>
-					)}
-					{item.key === 'linkedin' && (
-						<svg viewBox="0 0 24 24" className="size-6 fill-current transition-colors">
-							<path d="M19 3a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h14m-.5 15.5v-5.3a3.26 3.26 0 0 0-3.26-3.26c-.85 0-1.84.52-2.28 1.3v-1.11h-2.79v8.37h2.79v-4.93c0-.77.62-1.4 1.39-1.4a1.4 1.4 0 0 1 1.4 1.4v4.93h2.75M6.88 8.56a1.68 1.68 0 0 0 1.68-1.68c0-.93-.75-1.69-1.68-1.69a1.69 1.69 0 0 0-1.69 1.69c0 .93.76 1.68 1.69 1.68m1.39 9.94v-8.37H5.5v8.37h2.77z" />
-						</svg>
-					)}
-					{item.key === 'malt' && (
-						<svg viewBox="0 0 32 32" className="size-6 fill-current transition-colors">
-							<path d="M27.3892 4.61825C24.9683 2.20484 22.3911 3.76909 20.7747 5.37803L5.51955 20.6331C3.90317 22.2495 2.21229 24.7076 4.75978 27.2477C7.29981 29.7877 9.75047 28.0968 11.3669 26.4804L26.622 11.2253C28.2384 9.61639 29.8026 7.03166 27.3892 4.61825ZM12.8119 3.99255L16.0447 7.22533L19.3296 3.93296C19.5531 3.7095 19.7765 3.50093 20.0074 3.30726C19.6648 1.57169 18.6741 0 16.0372 0C13.4004 0 12.4097 1.57914 12.0745 3.31471C12.3203 3.53073 12.5661 3.74674 12.8119 3.99255ZM19.3296 27.9851L16.0447 24.7002L12.8119 27.9255C12.5661 28.1713 12.3277 28.4022 12.0819 28.6108C12.4544 30.3836 13.4972 32 16.0372 32C18.5847 32 19.635 30.3687 20 28.5959C19.7765 28.4022 19.5531 28.2086 19.3296 27.9851ZM11.4413 11.8212H5.21415C2.92737 11.8212 0 12.5438 0 15.9553C0 18.5102 1.63129 19.5531 3.41155 19.9181C3.62011 19.6797 11.4413 11.8212 11.4413 11.8212ZM28.6853 11.9926C28.4916 12.216 20.648 20.0968 20.648 20.0968H26.7858C29.0726 20.0968 32 19.5531 32 15.9553C32 13.3259 30.4283 12.3352 28.6853 11.9926ZM13.4823 9.78026L14.5922 8.67039L11.3669 5.43762C9.75047 3.82123 7.29981 2.13035 4.75233 4.67784C2.89013 6.54004 3.30726 8.35754 4.2905 9.82495C4.5959 9.80261 13.4823 9.78026 13.4823 9.78026ZM18.5996 22.1378L17.4823 23.2551L20.7747 26.54C22.3911 28.1564 24.9683 29.7207 27.3818 27.3073C29.1844 25.5047 28.7747 23.6052 27.7765 22.0931C27.4562 22.1155 18.5996 22.1378 18.5996 22.1378Z" />
-						</svg>
-					)}
-					{item.key === 'x' && (
-						<svg viewBox="0 0 24 24" className="size-6 fill-current transition-colors">
-							<path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
-						</svg>
-					)}
-				</a>
-			))}
+			{items.map((item, index) => {
+				const isActive = open && contentIndex === index;
+				return (
+					<a
+						key={index}
+						className={`relative z-10 p-2.5 rounded-full transition-colors duration-200 touch-manipulation flex items-center justify-center ${
+							isActive ? '[&_path]:fill-fg scale-105' : '[&_path]:fill-muted hover:[&_path]:fill-fg hover:scale-105 active:scale-95'
+						}`}
+						href={item.url}
+						target="_blank"
+						rel="noopener noreferrer"
+						aria-label={item.label}
+						onPointerEnter={(e) => handleHover(e, index)}
+						onClick={(e) => handleClick(e, index)}
+					>
+						{isActive && (
+							<motion.div
+								layoutId="dock-active-pill"
+								className="absolute inset-0 rounded-full bg-white/25 dark:bg-white/15 backdrop-blur-xl shadow-[0_4px_16px_rgba(255,255,255,0.2)] border border-white/30 dark:border-white/20 -z-10"
+								transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+							/>
+						)}
+
+						{item.key === 'github' && (
+							<svg viewBox="0 0 24 24" className="size-6 fill-current transition-colors">
+								<path d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.53 1.032 1.53 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z" />
+							</svg>
+						)}
+						{item.key === 'linkedin' && (
+							<svg viewBox="0 0 24 24" className="size-6 fill-current transition-colors">
+								<path d="M19 3a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h14m-.5 15.5v-5.3a3.26 3.26 0 0 0-3.26-3.26c-.85 0-1.84.52-2.28 1.3v-1.11h-2.79v8.37h2.79v-4.93c0-.77.62-1.4 1.39-1.4a1.4 1.4 0 0 1 1.4 1.4v4.93h2.75M6.88 8.56a1.68 1.68 0 0 0 1.68-1.68c0-.93-.75-1.69-1.68-1.69a1.69 1.69 0 0 0-1.69 1.69c0 .93.76 1.68 1.69 1.68m1.39 9.94v-8.37H5.5v8.37h2.77z" />
+							</svg>
+						)}
+						{item.key === 'malt' && (
+							<svg viewBox="0 0 32 32" className="size-6 fill-current transition-colors">
+								<path d="M27.3892 4.61825C24.9683 2.20484 22.3911 3.76909 20.7747 5.37803L5.51955 20.6331C3.90317 22.2495 2.21229 24.7076 4.75978 27.2477C7.29981 29.7877 9.75047 28.0968 11.3669 26.4804L26.622 11.2253C28.2384 9.61639 29.8026 7.03166 27.3892 4.61825ZM12.8119 3.99255L16.0447 7.22533L19.3296 3.93296C19.5531 3.7095 19.7765 3.50093 20.0074 3.30726C19.6648 1.57169 18.6741 0 16.0372 0C13.4004 0 12.4097 1.57914 12.0745 3.31471C12.3203 3.53073 12.5661 3.74674 12.8119 3.99255ZM19.3296 27.9851L16.0447 24.7002L12.8119 27.9255C12.5661 28.1713 12.3277 28.4022 12.0819 28.6108C12.4544 30.3836 13.4972 32 16.0372 32C18.5847 32 19.635 30.3687 20 28.5959C19.7765 28.4022 19.5531 28.2086 19.3296 27.9851ZM11.4413 11.8212H5.21415C2.92737 11.8212 0 12.5438 0 15.9553C0 18.5102 1.63129 19.5531 3.41155 19.9181C3.62011 19.6797 11.4413 11.8212 11.4413 11.8212ZM28.6853 11.9926C28.4916 12.216 20.648 20.0968 20.648 20.0968H26.7858C29.0726 20.0968 32 19.5531 32 15.9553C32 13.3259 30.4283 12.3352 28.6853 11.9926ZM13.4823 9.78026L14.5922 8.67039L11.3669 5.43762C9.75047 3.82123 7.29981 2.13035 4.75233 4.67784C2.89013 6.54004 3.30726 8.35754 4.2905 9.82495C4.5959 9.80261 13.4823 9.78026 13.4823 9.78026ZM18.5996 22.1378L17.4823 23.2551L20.7747 26.54C22.3911 28.1564 24.9683 29.7207 27.3818 27.3073C29.1844 25.5047 28.7747 23.6052 27.7765 22.0931C27.4562 22.1155 18.5996 22.1378 18.5996 22.1378Z" />
+							</svg>
+						)}
+						{item.key === 'x' && (
+							<svg viewBox="0 0 24 24" className="size-6 fill-current transition-colors">
+								<path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+							</svg>
+						)}
+					</a>
+				);
+			})}
 
 			<AnimatePresence>
 				{open && (
 					<motion.div
-						initial={{ opacity: 0 }}
+						initial={{ opacity: 0, scale: 0.95 }}
 						animate={{
 							opacity: 1,
+							scale: 1,
 							left: `${popupDimensions.left}px`,
 							width: `${popupDimensions.width}px`,
 							height: `${popupDimensions.height}px`,
 						}}
-						exit={{ opacity: 0 }}
-						transition={{ type: 'spring', stiffness: 350, damping: 30 }}
-						className="squircle-sm border border-white/15 dark:border-white/10 bg-white/5 dark:bg-stone-900/40 backdrop-blur-3xl absolute bottom-[calc(100%+0.85rem)] flex -translate-x-1/2 items-end overflow-hidden shadow-[0_25px_60px_-15px_rgba(0,0,0,0.6)] z-50 transition-shadow duration-300 max-w-[calc(100vw-1.5rem)]"
+						exit={{ opacity: 0, scale: 0.95 }}
+						transition={{ type: 'spring', stiffness: 380, damping: 30 }}
+						className="squircle-sm border border-white/20 dark:border-white/15 bg-white/10 dark:bg-stone-900/50 backdrop-blur-3xl absolute bottom-[calc(100%+0.85rem)] flex -translate-x-1/2 items-end overflow-hidden shadow-[0_25px_60px_-15px_rgba(0,0,0,0.6),0_0_20px_rgba(255,255,255,0.05)] z-50 transition-shadow duration-300 max-w-[calc(100vw-1.5rem)]"
 					>
-						<div className="absolute inset-x-0 top-0 h-[1px] bg-linear-to-r from-transparent via-white/25 to-transparent z-30 pointer-events-none" />
-						<div className="absolute inset-0 bg-linear-to-b from-white/8 via-transparent to-transparent pointer-events-none z-20" />
+						<div className="absolute inset-x-0 top-0 h-[1px] bg-linear-to-r from-transparent via-white/40 to-transparent z-30 pointer-events-none" />
+						<div className="absolute inset-0 bg-linear-to-b from-white/12 via-white/4 to-transparent pointer-events-none z-20" />
 
 						<AnimatePresence mode="wait" initial={false}>
 							<motion.div
@@ -209,7 +223,7 @@ export default function Contacts({
 								initial={{ x: 220 * direction, opacity: 0, filter: 'blur(4px)' }}
 								animate={{ x: 0, opacity: 1, filter: 'blur(0px)' }}
 								exit={{ x: -220 * direction, opacity: 0, filter: 'blur(4px)' }}
-								transition={{ type: 'spring', stiffness: 300, damping: 28 }}
+								transition={{ type: 'spring', stiffness: 320, damping: 28 }}
 								className="relative z-10 w-max h-max max-w-[calc(100vw-2rem)]"
 							>
 								{contentIndex === 0 && (
