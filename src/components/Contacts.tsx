@@ -266,7 +266,7 @@ export default function Contacts({
 									<div className="w-[270px] flex flex-col relative overflow-hidden rounded-xl">
 										<img
 											className="h-24 w-full object-cover"
-											src={xProfile?.bannerUrl || 'https://pbs.twimg.com/profile_banners/1694851611066044417/1776283207'}
+											src={xProfile?.bannerUrl || '/banner.jpg'}
 											alt=""
 											onLoad={() => {
 												if (popupElementRef.current) {

@@ -1,4 +1,5 @@
 const DEFAULT_AVATAR = '/avatar.jpg';
+const DEFAULT_BANNER = '/banner.jpg';
 
 export async function getGithubProfile(username: string) {
 	try {
@@ -40,7 +41,7 @@ export async function getXProfile(handle: string) {
 				followers: data.followers_count ?? 115,
 				following: data.following_count ?? 353,
 				avatarUrl: DEFAULT_AVATAR,
-				bannerUrl: data.banner_url || 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=800&q=80',
+				bannerUrl: DEFAULT_BANNER,
 			};
 		}
 	} catch (e) {
@@ -53,6 +54,6 @@ export async function getXProfile(handle: string) {
 		followers: 115,
 		following: 353,
 		avatarUrl: DEFAULT_AVATAR,
-		bannerUrl: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=800&q=80',
+		bannerUrl: DEFAULT_BANNER,
 	};
 }
