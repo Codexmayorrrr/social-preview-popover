@@ -181,7 +181,7 @@ export default function Contacts({
 								)}
 
 								{contentIndex === 1 && (
-									<div className="w-2xs overflow-hidden rounded-xl">
+									<div className="w-2xs flex flex-col relative overflow-hidden rounded-xl">
 										<div className="h-16 w-full bg-linear-to-br from-[#0A66C2] via-[#0A66C2]/80 to-[#0A66C2]/30" />
 										<div className="bg-surface absolute left-3.5 top-16 -translate-y-1/2 rounded-full p-0.5 shadow-lg [&_img]:size-14 [&_img]:rounded-full z-20">
 											<img src={avatarSrc} alt={CONTACT.name} className="size-14 rounded-full object-cover" />
@@ -250,7 +250,7 @@ export default function Contacts({
 								)}
 
 								{contentIndex === 3 && (
-									<div className="w-2xs overflow-hidden rounded-xl">
+									<div className="w-2xs flex flex-col relative overflow-hidden rounded-xl">
 										<img
 											className="h-24 w-full object-cover"
 											src={xProfile?.bannerUrl || 'https://pbs.twimg.com/profile_banners/1694851611066044417/1776283207'}
@@ -259,16 +259,16 @@ export default function Contacts({
 										<div className="bg-surface absolute left-3.5 top-24 -translate-y-1/2 rounded-full p-0.5 shadow-lg [&_img]:size-14 [&_img]:rounded-full z-20">
 											<img src={avatarSrc} alt={CONTACT.name} className="size-14 rounded-full object-cover" />
 										</div>
-										<div className="flex flex-col p-3.5 pt-8">
+										<div className="flex flex-col p-3.5">
 											<div className="flex justify-between items-start">
-												<div className="flex flex-col">
+												<div className="flex flex-col mt-5">
 													<span className="font-semibold text-sm text-fg">
 														{xProfile?.name || githubProfile?.name || CONTACT.name}
 													</span>
 													<span className="text-muted text-xs">{xProfile?.handle || CONTACT.twitterHandle}</span>
 												</div>
 												<a
-													className="bg-fg text-bg hover:bg-fg/90 h-fit rounded-full px-3.5 py-1 text-xs font-semibold transition-all shadow-md hover:scale-105 shrink-0"
+													className="bg-fg text-bg hover:bg-fg/90 h-fit rounded-full px-3.5 py-1 text-xs font-semibold transition-all mt-5 shadow-md hover:scale-105 shrink-0"
 													href={CONTACT.x}
 													target="_blank"
 													rel="noopener noreferrer"
