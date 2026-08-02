@@ -90,10 +90,11 @@ export default function Contacts({
 
 	useLayoutEffect(() => {
 		if (open && popupElementRef.current) {
+			const rect = popupElementRef.current.getBoundingClientRect();
 			setPopupDimensions((prev) => ({
 				...prev,
-				width: popupElementRef.current?.offsetWidth || 0,
-				height: popupElementRef.current?.offsetHeight || 0,
+				width: Math.round(rect.width),
+				height: Math.round(rect.height),
 			}));
 		}
 	}, [open, contentIndex]);
@@ -149,7 +150,7 @@ export default function Contacts({
 						}}
 						exit={{ opacity: 0 }}
 						transition={{ type: 'spring', stiffness: 350, damping: 30 }}
-						className="squircle-sm border border-white/15 dark:border-white/10 bg-white/5 dark:bg-stone-900/40 backdrop-blur-3xl absolute bottom-[calc(100%+0.85rem)] flex translate-x-[-50%] items-end overflow-hidden shadow-[0_25px_60px_-15px_rgba(0,0,0,0.6)] z-50 transition-shadow duration-300"
+						className="squircle-sm border border-white/15 dark:border-white/10 bg-white/5 dark:bg-stone-900/40 backdrop-blur-3xl absolute bottom-[calc(100%+0.85rem)] flex -translate-x-1/2 items-end overflow-hidden shadow-[0_25px_60px_-15px_rgba(0,0,0,0.6)] z-50 transition-shadow duration-300"
 					>
 						<div className="absolute inset-x-0 top-0 h-[1px] bg-linear-to-r from-transparent via-white/25 to-transparent z-30 pointer-events-none" />
 						<div className="absolute inset-0 bg-linear-to-b from-white/8 via-transparent to-transparent pointer-events-none z-20" />
@@ -162,7 +163,7 @@ export default function Contacts({
 								animate={{ x: 0, opacity: 1, filter: 'blur(0px)' }}
 								exit={{ x: -220 * direction, opacity: 0, filter: 'blur(4px)' }}
 								transition={{ type: 'spring', stiffness: 300, damping: 28 }}
-								className="absolute z-10"
+								className="relative z-10 w-max h-max"
 							>
 								{contentIndex === 0 && (
 									<div className="flex flex-col gap-3 p-3.5">
@@ -182,7 +183,7 @@ export default function Contacts({
 								{contentIndex === 1 && (
 									<div className="w-2xs overflow-hidden rounded-xl">
 										<div className="h-16 w-full bg-linear-to-br from-[#0A66C2] via-[#0A66C2]/80 to-[#0A66C2]/30" />
-										<div className="bg-surface absolute left-3.5 top-16 translate-y-[-50%] rounded-full p-0.5 shadow-lg [&_img]:size-14 [&_img]:rounded-full">
+										<div className="bg-surface absolute left-3.5 top-16 -translate-y-1/2 rounded-full p-0.5 shadow-lg [&_img]:size-14 [&_img]:rounded-full z-20">
 											<img src={avatarSrc} alt={CONTACT.name} className="size-14 rounded-full object-cover" />
 										</div>
 										<div className="flex flex-col gap-1 p-3.5 pt-8">
@@ -196,7 +197,7 @@ export default function Contacts({
 													{labels.linkedinLocation}
 												</p>
 												<a
-													className="text-bg h-fit rounded-full bg-[#0A66C2] px-3.5 py-1 text-xs font-semibold transition-all hover:brightness-125 dark:bg-[#71B7FB] shadow-md"
+													className="text-bg h-fit rounded-full bg-[#0A66C2] px-3.5 py-1 text-xs font-semibold transition-all hover:brightness-125 dark:bg-[#71B7FB] shadow-md shrink-0"
 													href={CONTACT.linkedin}
 													target="_blank"
 													rel="noopener noreferrer"
@@ -251,23 +252,23 @@ export default function Contacts({
 								{contentIndex === 3 && (
 									<div className="w-2xs overflow-hidden rounded-xl">
 										<img
-											className="h-24 w-full max-w-[unset] object-cover"
+											className="h-24 w-full object-cover"
 											src={xProfile?.bannerUrl || 'https://pbs.twimg.com/profile_banners/1694851611066044417/1776283207'}
 											alt=""
 										/>
-										<div className="bg-surface absolute left-3.5 top-24 translate-y-[-50%] rounded-full p-0.5 shadow-lg [&_img]:size-14 [&_img]:rounded-full">
+										<div className="bg-surface absolute left-3.5 top-24 -translate-y-1/2 rounded-full p-0.5 shadow-lg [&_img]:size-14 [&_img]:rounded-full z-20">
 											<img src={avatarSrc} alt={CONTACT.name} className="size-14 rounded-full object-cover" />
 										</div>
-										<div className="flex flex-col p-3.5">
+										<div className="flex flex-col p-3.5 pt-8">
 											<div className="flex justify-between items-start">
-												<div className="flex flex-col mt-5">
+												<div className="flex flex-col">
 													<span className="font-semibold text-sm text-fg">
 														{xProfile?.name || githubProfile?.name || CONTACT.name}
 													</span>
 													<span className="text-muted text-xs">{xProfile?.handle || CONTACT.twitterHandle}</span>
 												</div>
 												<a
-													className="bg-fg text-bg hover:bg-fg/90 h-fit rounded-full px-3.5 py-1 text-xs font-semibold transition-all mt-5 shadow-md hover:scale-105"
+													className="bg-fg text-bg hover:bg-fg/90 h-fit rounded-full px-3.5 py-1 text-xs font-semibold transition-all shadow-md hover:scale-105 shrink-0"
 													href={CONTACT.x}
 													target="_blank"
 													rel="noopener noreferrer"

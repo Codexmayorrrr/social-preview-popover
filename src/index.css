@@ -1,24 +1,50 @@
 @import 'tailwindcss';
 
-@layer utilities {
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme inline {
+	--color-bg: var(--bg);
+	--color-surface: var(--surface);
+	--color-fg: var(--fg);
+	--color-muted: var(--muted);
+	--color-border: var(--border);
+}
+
+@layer base {
+	:root {
+		color-scheme: dark;
+		--bg: hsl(24 5% 10%);
+		--surface: hsl(24 5% 15%);
+		--fg: var(--color-stone-100);
+		--muted: var(--color-stone-400);
+		--border: --alpha(var(--color-stone-50) / 10%);
+	}
+
+	html {
+		scroll-behavior: smooth;
+		font-size: 16px;
+	}
+
+	body {
+		background-color: var(--bg);
+		color: var(--fg);
+	}
+}
+
+@layer components {
 	.squircle {
-		corner-shape: superellipse(1.2);
-		border-radius: 1rem;
+		border-radius: 1.5rem;
+		@supports (corner-shape: squircle) {
+			corner-shape: squircle;
+			border-radius: 3rem;
+		}
 	}
+
 	.squircle-sm {
-		corner-shape: superellipse(1.2);
-		border-radius: 0.85rem;
+		border-radius: 1.25rem;
+		@supports (corner-shape: squircle) {
+			corner-shape: squircle;
+			border-radius: 2rem;
+		}
 	}
-}
-
-:root {
-	--bg: #0c0a09;
-	--fg: #f5f5f4;
-	--muted: #a8a29e;
-	--surface: #1c1917;
-}
-
-body {
-	background-color: var(--bg);
-	color: var(--fg);
 }
