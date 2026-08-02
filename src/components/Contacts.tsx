@@ -1,4 +1,4 @@
-import React, { useState, useRef, useLayoutEffect, useMemo } from 'react';
+import React, { useState, useRef, useLayoutEffect, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { CONTACT } from '../config';
 import GithubGraph from './GithubGraph';
@@ -65,7 +65,9 @@ export default function Contacts({
 		left: 0,
 	});
 
+	const dockRef = useRef<HTMLDivElement>(null);
 	const popupElementRef = useRef<HTMLDivElement>(null);
+
 	const direction = useMemo(
 		() => Math.max(Math.min(contentIndex - prevContentIndex, 1), -1),
 		[contentIndex, prevContentIndex],
@@ -76,17 +78,43 @@ export default function Contacts({
 		[xProfile, githubProfile],
 	);
 
-	function handleHover(event: React.PointerEvent<HTMLAnchorElement>, index: number) {
-		if (event.pointerType !== 'mouse') return;
-		const node = event.currentTarget;
-		if (!node) return;
-
+	function openForIndex(node: HTMLElement, index: number) {
 		const nextLeft = node.offsetLeft + node.offsetWidth / 2;
 		setOpen(true);
 		setPrevContentIndex(contentIndex);
 		setContentIndex(index);
 		setPopupDimensions((prev) => ({ ...prev, left: nextLeft }));
 	}
+
+	function handleHover(event: React.PointerEvent<HTMLAnchorElement>, index: number) {
+		if (event.pointerType !== 'mouse') return;
+		openForIndex(event.currentTarget, index);
+	}
+
+	function handleClick(event: React.MouseEvent<HTMLAnchorElement>, index: number) {
+		const isTouch = !window.matchMedia('(hover: hover)').matches || event.nativeEvent.type === 'touchstart';
+		if (isTouch) {
+			if (!open || contentIndex !== index) {
+				event.preventDefault();
+				openForIndex(event.currentTarget, index);
+			}
+		}
+	}
+
+	useEffect(() => {
+		function handleClickOutside(e: PointerEvent) {
+			if (dockRef.current && !dockRef.current.contains(e.target as Node)) {
+				setOpen(false);
+			}
+		}
+
+		if (open) {
+			document.addEventListener('pointerdown', handleClickOutside);
+		}
+		return () => {
+			document.removeEventListener('pointerdown', handleClickOutside);
+		};
+	}, [open]);
 
 	useLayoutEffect(() => {
 		if (!open || !popupElementRef.current) return;
@@ -114,19 +142,25 @@ export default function Contacts({
 
 	return (
 		<div
-			className="contacts-dock relative flex items-center gap-1 p-1.5 rounded-full bg-white/10 dark:bg-stone-900/60 backdrop-blur-2xl border border-white/20 dark:border-white/10 shadow-[0_10px_30px_-5px_rgba(0,0,0,0.3)] transition-all duration-300"
-			onMouseLeave={() => setOpen(false)}
+			ref={dockRef}
+			className="contacts-dock relative flex items-center gap-1 p-1.5 rounded-full bg-white/10 dark:bg-stone-900/60 backdrop-blur-2xl border border-white/20 dark:border-white/10 shadow-[0_10px_30px_-5px_rgba(0,0,0,0.3)] transition-all duration-300 touch-none select-none"
+			onMouseLeave={() => {
+				if (window.matchMedia('(hover: hover)').matches) {
+					setOpen(false);
+				}
+			}}
 			role="presentation"
 		>
 			{items.map((item, index) => (
 				<a
 					key={index}
-					className="hover:[&_path]:fill-fg [&_path]:fill-muted z-10 p-2.5 rounded-full transition-all duration-200 hover:bg-white/15 dark:hover:bg-white/10 hover:scale-110 active:scale-95"
+					className="hover:[&_path]:fill-fg [&_path]:fill-muted z-10 p-2.5 rounded-full transition-all duration-200 hover:bg-white/15 dark:hover:bg-white/10 hover:scale-110 active:scale-95 touch-manipulation"
 					href={item.url}
 					target="_blank"
 					rel="noopener noreferrer"
 					aria-label={item.label}
 					onPointerEnter={(e) => handleHover(e, index)}
+					onClick={(e) => handleClick(e, index)}
 				>
 					{item.key === 'github' && (
 						<svg viewBox="0 0 24 24" className="size-6 fill-current transition-colors">
@@ -163,7 +197,7 @@ export default function Contacts({
 						}}
 						exit={{ opacity: 0 }}
 						transition={{ type: 'spring', stiffness: 350, damping: 30 }}
-						className="squircle-sm border border-white/15 dark:border-white/10 bg-white/5 dark:bg-stone-900/40 backdrop-blur-3xl absolute bottom-[calc(100%+0.85rem)] flex -translate-x-1/2 items-end overflow-hidden shadow-[0_25px_60px_-15px_rgba(0,0,0,0.6)] z-50 transition-shadow duration-300"
+						className="squircle-sm border border-white/15 dark:border-white/10 bg-white/5 dark:bg-stone-900/40 backdrop-blur-3xl absolute bottom-[calc(100%+0.85rem)] flex -translate-x-1/2 items-end overflow-hidden shadow-[0_25px_60px_-15px_rgba(0,0,0,0.6)] z-50 transition-shadow duration-300 max-w-[calc(100vw-1.5rem)]"
 					>
 						<div className="absolute inset-x-0 top-0 h-[1px] bg-linear-to-r from-transparent via-white/25 to-transparent z-30 pointer-events-none" />
 						<div className="absolute inset-0 bg-linear-to-b from-white/8 via-transparent to-transparent pointer-events-none z-20" />
@@ -176,17 +210,17 @@ export default function Contacts({
 								animate={{ x: 0, opacity: 1, filter: 'blur(0px)' }}
 								exit={{ x: -220 * direction, opacity: 0, filter: 'blur(4px)' }}
 								transition={{ type: 'spring', stiffness: 300, damping: 28 }}
-								className="relative z-10 w-max h-max"
+								className="relative z-10 w-max h-max max-w-[calc(100vw-2rem)]"
 							>
 								{contentIndex === 0 && (
-									<div className="flex flex-col gap-3 p-3.5">
+									<div className="flex flex-col gap-3 p-3.5 max-w-full overflow-hidden">
 										<div className="flex items-center gap-3 [&_img]:rounded-full">
 											<img src={avatarSrc} alt={CONTACT.name} className="size-10 rounded-full object-cover" />
-											<div className="flex flex-col">
-												<span className="font-semibold text-sm tracking-tight text-fg">
+											<div className="flex flex-col min-w-0">
+												<span className="font-semibold text-sm tracking-tight text-fg truncate">
 													{githubProfile?.name || githubProfile?.login || CONTACT.githubUsername}
 												</span>
-												<p className="text-muted text-xs">{contributionsLabel}</p>
+												<p className="text-muted text-xs truncate">{contributionsLabel}</p>
 											</div>
 										</div>
 										<GithubGraph contributions={contributions} />
@@ -194,7 +228,7 @@ export default function Contacts({
 								)}
 
 								{contentIndex === 1 && (
-									<div className="w-[270px] flex flex-col relative overflow-hidden rounded-xl">
+									<div className="w-[min(270px,calc(100vw-3rem))] flex flex-col relative overflow-hidden rounded-xl">
 										<div className="h-16 w-full bg-linear-to-br from-[#0A66C2] via-[#0A66C2]/80 to-[#0A66C2]/30" />
 										<div className="bg-surface absolute left-3.5 top-16 -translate-y-1/2 rounded-full p-0.5 shadow-lg [&_img]:size-14 [&_img]:rounded-full z-20">
 											<img src={avatarSrc} alt={CONTACT.name} className="size-14 rounded-full object-cover" />
@@ -223,20 +257,20 @@ export default function Contacts({
 								)}
 
 								{contentIndex === 2 && (
-									<div className="flex flex-col gap-3 p-3.5">
+									<div className="flex flex-col gap-3 p-3.5 w-[min(270px,calc(100vw-3rem))]">
 										<div className="flex items-center gap-3 [&_img]:rounded-md">
 											<img src={avatarSrc} alt={CONTACT.name} className="size-10 rounded-md object-cover" />
-											<div className="flex flex-col">
-												<span className="font-semibold text-sm text-fg">
+											<div className="flex flex-col min-w-0">
+												<span className="font-semibold text-sm text-fg truncate">
 													{githubProfile?.name || xProfile?.name || CONTACT.name}
 												</span>
-												<p className="text-muted flex items-center gap-1.5 text-xs">
-													<span className="size-1.5 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)]" />
+												<p className="text-muted flex items-center gap-1.5 text-xs truncate">
+													<span className="size-1.5 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)] shrink-0" />
 													{labels?.maltAvailability || 'Available for projects'}
 												</p>
 											</div>
 										</div>
-										<div className="text-muted flex items-baseline justify-between gap-6 text-xs text-nowrap">
+										<div className="text-muted flex items-baseline justify-between gap-4 text-xs text-nowrap">
 											<div className="flex items-center gap-1">
 												<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="size-4 shrink-0 text-muted">
 													<path d="M12 7.5a2.25 2.25 0 1 0 0 4.5 2.25 2.25 0 0 0 0-4.5Z" />
@@ -263,7 +297,7 @@ export default function Contacts({
 								)}
 
 								{contentIndex === 3 && (
-									<div className="w-[270px] flex flex-col relative overflow-hidden rounded-xl">
+									<div className="w-[min(270px,calc(100vw-3rem))] flex flex-col relative overflow-hidden rounded-xl">
 										<img
 											className="h-24 w-full object-cover"
 											src={xProfile?.bannerUrl || '/banner.jpg'}
@@ -284,11 +318,11 @@ export default function Contacts({
 										</div>
 										<div className="flex flex-col p-3.5">
 											<div className="flex justify-between items-start">
-												<div className="flex flex-col mt-5">
-													<span className="font-semibold text-sm text-fg">
+												<div className="flex flex-col mt-5 min-w-0 pr-2">
+													<span className="font-semibold text-sm text-fg truncate">
 														{xProfile?.name || githubProfile?.name || CONTACT.name}
 													</span>
-													<span className="text-muted text-xs">{xProfile?.handle || CONTACT.twitterHandle}</span>
+													<span className="text-muted text-xs truncate">{xProfile?.handle || CONTACT.twitterHandle}</span>
 												</div>
 												<a
 													className="bg-fg text-bg hover:bg-fg/90 h-fit rounded-full px-3.5 py-1 text-xs font-semibold transition-all mt-5 shadow-md hover:scale-105 shrink-0"
@@ -307,10 +341,10 @@ export default function Contacts({
 											{Boolean(xProfile?.followers) && (
 												<div className="flex items-center gap-3.5 mt-2.5 text-xs text-muted">
 													<span>
-														<strong className="text-fg font-semibold">{xProfile?.following ?? 412}</strong> Following
+														<strong className="text-fg font-semibold">{xProfile?.following ?? 353}</strong> Following
 													</span>
 													<span>
-														<strong className="text-fg font-semibold">{xProfile?.followers ?? 1280}</strong> Followers
+														<strong className="text-fg font-semibold">{xProfile?.followers ?? 115}</strong> Followers
 													</span>
 												</div>
 											)}
