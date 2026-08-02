@@ -1,3 +1,5 @@
+const DEFAULT_AVATAR = 'https://media.licdn.com/dms/image/v2/D4D03AQFELmPgapFo2A/profile-displayphoto-crop_800_800/B4DZzJqvP1JoAI-/0/1772909972143?e=1787184000&v=beta&t=87CEe08Uw0QI06SL9KszajmR5KT35ujas9BGmsOZTt4';
+
 export async function getGithubProfile(username: string) {
 	try {
 		const res = await fetch(`https://api.github.com/users/${username}`);
@@ -8,7 +10,7 @@ export async function getGithubProfile(username: string) {
 				login: data.login || username,
 				bio: data.bio || 'Design Engineer',
 				location: data.location || 'Remote',
-				avatarUrl: data.avatar_url || 'https://avatars.githubusercontent.com/u/128181481?v=4',
+				avatarUrl: DEFAULT_AVATAR,
 			};
 		}
 	} catch (e) {
@@ -19,7 +21,7 @@ export async function getGithubProfile(username: string) {
 		login: username,
 		bio: 'Design Engineer',
 		location: 'Remote',
-		avatarUrl: 'https://avatars.githubusercontent.com/u/128181481?v=4',
+		avatarUrl: DEFAULT_AVATAR,
 	};
 }
 
@@ -30,7 +32,7 @@ export async function getXProfile(handle: string) {
 		bio: 'Design Engineer',
 		followers: 1280,
 		following: 412,
-		avatarUrl: 'https://avatars.githubusercontent.com/u/128181481?v=4',
+		avatarUrl: DEFAULT_AVATAR,
 		bannerUrl: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=800&q=80',
 	};
 }
