@@ -18,6 +18,47 @@ export function getGithubContributions(username: string) {
 async function fetchContributionsFromGithub(username: string): Promise<Contributions> {
 	const currentYear = new Date().getUTCFullYear();
 	try {
+		const today = new Date().toISOString().slice(0, 10);
+		const res = await fetch(`https://github.com/users/${username}/contributions?_t=${Date.now()}`, {
+			headers: {
+				'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+				'Cache-Control': 'no-cache, no-store, must-revalidate',
+				'Pragma': 'no-cache',
+			},
+			signal: AbortSignal.timeout(4500),
+		});
+
+		if (res.ok) {
+			const html = await res.text();
+			const daysMap = new Map<string, ContributionDay>();
+			const matches = html.matchAll(/<td[^>]*data-date="([^"]+)"[^>]*data-level="([^"]+)"/g);
+
+			for (const match of matches) {
+				const date = match[1];
+				if (date > today) continue;
+
+				const level = Math.min(Math.max(parseInt(match[2], 10) || 0, 0), 4) as ContributionDay['level'];
+				const count = level > 0 ? (level === 1 ? 2 : level * 3) : 0;
+				daysMap.set(date, { date, level, count });
+			}
+
+			const days = Array.from(daysMap.values());
+			if (days.length > 0) {
+				days.sort((a, b) => a.date.localeCompare(b.date));
+				const total = days.reduce((sum, d) => sum + (d.count || (d.level > 0 ? 1 : 0)), 0);
+				return {
+					total,
+					start: days[0]?.date ?? `${currentYear}-01-01`,
+					levels: days.map((d) => d.level).join(''),
+					counts: days.map((d) => d.count),
+				};
+			}
+		}
+	} catch (e) {
+		console.error('Error fetching direct GitHub contributions:', e);
+	}
+
+	try {
 		const API = 'https://github-contributions-api.jogruber.de/v4';
 		const response = await fetch(`${API}/${username}?y=last&_t=${Date.now()}`, {
 			signal: AbortSignal.timeout(4500),
@@ -42,7 +83,7 @@ async function fetchContributionsFromGithub(username: string): Promise<Contribut
 			}
 		}
 	} catch (e) {
-		console.error('Error fetching contributions API:', e);
+		console.error('Error fetching fallback contributions:', e);
 	}
 
 	const today = new Date();
