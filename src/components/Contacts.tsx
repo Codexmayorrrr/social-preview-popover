@@ -67,6 +67,7 @@ export default function Contacts({
 
 	const dockRef = useRef<HTMLDivElement>(null);
 	const popupElementRef = useRef<HTMLDivElement>(null);
+	const activeIconLeftRef = useRef<number>(0);
 
 	const direction = useMemo(
 		() => Math.max(Math.min(contentIndex - prevContentIndex, 1), -1),
@@ -78,12 +79,33 @@ export default function Contacts({
 		[xProfile, githubProfile],
 	);
 
+	function calculateClampedLeft(rawLeft: number, cardWidth: number) {
+		if (!dockRef.current || cardWidth === 0) return rawLeft;
+		const dockRect = dockRef.current.getBoundingClientRect();
+		const viewportWidth = window.innerWidth;
+		const margin = 12;
+
+		const halfWidth = cardWidth / 2;
+		const minDockLeft = margin + halfWidth - dockRect.left;
+		const maxDockLeft = viewportWidth - margin - halfWidth - dockRect.left;
+
+		if (minDockLeft > maxDockLeft) {
+			return dockRect.width / 2;
+		}
+
+		return Math.max(minDockLeft, Math.min(maxDockLeft, rawLeft));
+	}
+
 	function openForIndex(node: HTMLElement, index: number) {
 		const nextLeft = node.offsetLeft + node.offsetWidth / 2;
+		activeIconLeftRef.current = nextLeft;
 		setOpen(true);
 		setPrevContentIndex(contentIndex);
 		setContentIndex(index);
-		setPopupDimensions((prev) => ({ ...prev, left: nextLeft }));
+		setPopupDimensions((prev) => ({
+			...prev,
+			left: calculateClampedLeft(nextLeft, prev.width),
+		}));
 	}
 
 	function handleHover(event: React.PointerEvent<HTMLAnchorElement>, index: number) {
@@ -122,11 +144,15 @@ export default function Contacts({
 		const updateDimensions = () => {
 			if (popupElementRef.current) {
 				const rect = popupElementRef.current.getBoundingClientRect();
-				setPopupDimensions((prev) => ({
-					...prev,
-					width: Math.round(rect.width),
-					height: Math.round(rect.height),
-				}));
+				const width = Math.round(rect.width);
+				const height = Math.round(rect.height);
+				const clamped = calculateClampedLeft(activeIconLeftRef.current, width);
+
+				setPopupDimensions({
+					width,
+					height,
+					left: clamped,
+				});
 			}
 		};
 
@@ -134,9 +160,11 @@ export default function Contacts({
 
 		const resizeObserver = new ResizeObserver(updateDimensions);
 		resizeObserver.observe(popupElementRef.current);
+		window.addEventListener('resize', updateDimensions);
 
 		return () => {
 			resizeObserver.disconnect();
+			window.removeEventListener('resize', updateDimensions);
 		};
 	}, [open, contentIndex]);
 
