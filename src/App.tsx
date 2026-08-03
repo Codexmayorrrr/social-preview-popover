@@ -4,7 +4,7 @@ import { CONTACT } from './config';
 import { getGithubProfile, getXProfile } from './utils/social-api';
 import { getGithubContributions, type Contributions } from './utils/github-contributions';
 
-const allAvailableItems: PlatformItem[] = [
+const initialItems: PlatformItem[] = [
 	{ label: 'GitHub', url: CONTACT.github, key: 'github' },
 	{ label: 'LinkedIn', url: CONTACT.linkedin, key: 'linkedin' },
 	{ label: 'Malt', url: CONTACT.malt, key: 'malt' },
@@ -13,8 +13,11 @@ const allAvailableItems: PlatformItem[] = [
 ];
 
 export default function App() {
-	const [activeItems, setActiveItems] = useState<PlatformItem[]>(allAvailableItems);
+	const [activeItems, setActiveItems] = useState<PlatformItem[]>(initialItems);
 	const [activePreset, setActivePreset] = useState<'all' | 'dev' | 'creator'>('all');
+	const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+	const [inputUrl, setInputUrl] = useState('');
+	const [detectedKey, setDetectedKey] = useState<PlatformItem['key']>('github');
 
 	const [contributions, setContributions] = useState<Contributions>({
 		total: 120,
@@ -44,46 +47,95 @@ export default function App() {
 		loadData();
 	}, []);
 
+	// Auto-detect social platform key from typed URL
+	useEffect(() => {
+		const lower = inputUrl.toLowerCase();
+		if (lower.includes('spotify.com')) setDetectedKey('spotify');
+		else if (lower.includes('instagram.com')) setDetectedKey('instagram');
+		else if (lower.includes('youtube.com') || lower.includes('youtu.be')) setDetectedKey('youtube');
+		else if (lower.includes('linkedin.com')) setDetectedKey('linkedin');
+		else if (lower.includes('x.com') || lower.includes('twitter.com')) setDetectedKey('x');
+		else if (lower.includes('malt.com')) setDetectedKey('malt');
+		else setDetectedKey('github');
+	}, [inputUrl]);
+
 	function applyPreset(preset: 'all' | 'dev' | 'creator') {
 		setActivePreset(preset);
 		if (preset === 'dev') {
-			setActiveItems(allAvailableItems.filter((i) => ['github', 'x', 'linkedin'].includes(i.key)));
+			setActiveItems(initialItems.filter((i) => ['github', 'x', 'linkedin'].includes(i.key)));
 		} else if (preset === 'creator') {
-			setActiveItems(allAvailableItems.filter((i) => ['youtube', 'x', 'linkedin', 'malt'].includes(i.key)));
+			setActiveItems(initialItems.filter((i) => ['youtube', 'x', 'linkedin', 'malt'].includes(i.key)));
 		} else {
-			setActiveItems(allAvailableItems);
+			setActiveItems(initialItems);
+		}
+	}
+
+	function handleAddLink(e: React.FormEvent) {
+		e.preventDefault();
+		if (!inputUrl.trim()) return;
+
+		const newItem: PlatformItem = {
+			label: detectedKey.toUpperCase(),
+			url: inputUrl.startsWith('http') ? inputUrl : `https://${inputUrl}`,
+			key: detectedKey,
+		};
+
+		// If item with same key already exists, replace it, otherwise append
+		const exists = activeItems.some((i) => i.key === detectedKey);
+		if (exists) {
+			setActiveItems(activeItems.map((i) => (i.key === detectedKey ? newItem : i)));
+		} else {
+			setActiveItems([...activeItems, newItem]);
+		}
+
+		setInputUrl('');
+		setIsAddModalOpen(false);
+	}
+
+	function handleRemoveItem(key: PlatformItem['key']) {
+		if (activeItems.length > 1) {
+			setActiveItems(activeItems.filter((i) => i.key !== key));
 		}
 	}
 
 	return (
 		<main className="min-h-screen bg-stone-950 text-stone-100 flex flex-col items-center justify-between p-6 sm:p-12 font-sans antialiased relative">
-			{/* Muted Preset Filter Bar */}
-			<header className="w-full max-w-xl flex items-center justify-between z-20">
+			{/* Muted Preset Filter & Add Link Bar */}
+			<header className="w-full max-w-xl flex items-center justify-between z-20 gap-2 flex-wrap">
 				<span className="text-xs font-serif italic text-stone-500 tracking-wider">mayowa ali</span>
-				<div className="flex items-center gap-1.5 bg-stone-900/80 p-1 rounded-full border border-white/10 text-xs">
+				<div className="flex items-center gap-2">
+					<div className="flex items-center gap-1.5 bg-stone-900/80 p-1 rounded-full border border-white/10 text-xs">
+						<button
+							onClick={() => applyPreset('all')}
+							className={`px-3 py-1 rounded-full transition-colors ${
+								activePreset === 'all' ? 'bg-white/15 text-white font-medium' : 'text-stone-400 hover:text-white'
+							}`}
+						>
+							All
+						</button>
+						<button
+							onClick={() => applyPreset('dev')}
+							className={`px-3 py-1 rounded-full transition-colors ${
+								activePreset === 'dev' ? 'bg-white/15 text-white font-medium' : 'text-stone-400 hover:text-white'
+							}`}
+						>
+							Dev
+						</button>
+						<button
+							onClick={() => applyPreset('creator')}
+							className={`px-3 py-1 rounded-full transition-colors ${
+								activePreset === 'creator' ? 'bg-white/15 text-white font-medium' : 'text-stone-400 hover:text-white'
+							}`}
+						>
+							Creator
+						</button>
+					</div>
+
 					<button
-						onClick={() => applyPreset('all')}
-						className={`px-3 py-1 rounded-full transition-colors ${
-							activePreset === 'all' ? 'bg-white/15 text-white font-medium' : 'text-stone-400 hover:text-white'
-						}`}
+						onClick={() => setIsAddModalOpen(true)}
+						className="px-3.5 py-1.5 rounded-full bg-white/10 hover:bg-white/20 transition-all text-xs font-medium text-white border border-white/15 flex items-center gap-1 shadow-md"
 					>
-						All
-					</button>
-					<button
-						onClick={() => applyPreset('dev')}
-						className={`px-3 py-1 rounded-full transition-colors ${
-							activePreset === 'dev' ? 'bg-white/15 text-white font-medium' : 'text-stone-400 hover:text-white'
-						}`}
-					>
-						Dev
-					</button>
-					<button
-						onClick={() => applyPreset('creator')}
-						className={`px-3 py-1 rounded-full transition-colors ${
-							activePreset === 'creator' ? 'bg-white/15 text-white font-medium' : 'text-stone-400 hover:text-white'
-						}`}
-					>
-						Creator
+						<span>+</span> Add Social
 					</button>
 				</div>
 			</header>
@@ -108,7 +160,7 @@ export default function App() {
 				</div>
 			</section>
 
-			{/* Original Floating Contacts Dock */}
+			{/* Floating Contacts Dock */}
 			<footer className="sticky bottom-8 z-40 pb-4">
 				<Contacts
 					items={activeItems}
@@ -126,6 +178,78 @@ export default function App() {
 					}}
 				/>
 			</footer>
+
+			{/* Ultra-Minimal Add Social Link Modal */}
+			{isAddModalOpen && (
+				<div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-md flex items-center justify-center p-4">
+					<div className="bg-stone-900/90 border border-white/15 rounded-2xl p-6 w-full max-w-sm shadow-2xl flex flex-col gap-4 relative">
+						<div className="flex items-center justify-between">
+							<h3 className="font-serif italic text-base text-stone-100">Add Social Link</h3>
+							<button
+								onClick={() => setIsAddModalOpen(false)}
+								className="text-stone-500 hover:text-stone-200 text-sm p-1"
+							>
+								✕
+							</button>
+						</div>
+
+						<form onSubmit={handleAddLink} className="flex flex-col gap-3">
+							<div className="relative">
+								<input
+									type="text"
+									placeholder="Paste URL (e.g. spotify.com, instagram.com)"
+									value={inputUrl}
+									onChange={(e) => setInputUrl(e.target.value)}
+									className="w-full px-3.5 py-2.5 rounded-xl bg-white/5 border border-white/10 text-xs text-stone-100 placeholder-stone-500 focus:outline-none focus:border-white/30 transition-colors"
+									autoFocus
+								/>
+								<span className="absolute right-3 top-2.5 text-xs text-stone-400 capitalize bg-white/10 px-2 py-0.5 rounded">
+									{detectedKey}
+								</span>
+							</div>
+
+							<div className="flex items-center gap-2 pt-1">
+								<button
+									type="submit"
+									className="flex-1 py-2.5 rounded-xl bg-stone-100 text-stone-900 font-medium text-xs hover:bg-white transition-colors"
+								>
+									Add to Dock
+								</button>
+								<button
+									type="button"
+									onClick={() => setIsAddModalOpen(false)}
+									className="px-4 py-2.5 rounded-xl bg-white/5 text-stone-400 hover:text-stone-200 text-xs transition-colors"
+								>
+									Cancel
+								</button>
+							</div>
+						</form>
+
+						{/* Quick Active Platform List with Remove Buttons */}
+						<div className="border-t border-white/10 pt-3 mt-1 flex flex-col gap-2">
+							<span className="text-[11px] text-stone-500 font-medium">Active Dock Platforms:</span>
+							<div className="flex flex-wrap gap-1.5">
+								{activeItems.map((item) => (
+									<span
+										key={item.key}
+										className="text-xs px-2.5 py-1 rounded-full bg-white/5 border border-white/10 text-stone-300 flex items-center gap-1.5 capitalize"
+									>
+										{item.key}
+										{activeItems.length > 1 && (
+											<button
+												onClick={() => handleRemoveItem(item.key)}
+												className="text-stone-500 hover:text-red-400 font-bold text-xs pl-1"
+											>
+												×
+											</button>
+										)}
+									</span>
+								))}
+							</div>
+						</div>
+					</div>
+				</div>
+			)}
 		</main>
 	);
 }
