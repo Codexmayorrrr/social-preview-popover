@@ -4,7 +4,24 @@ import { CONTACT } from '../config';
 import GithubGraph from './GithubGraph';
 import type { Contributions } from '../utils/github-contributions';
 
+export interface PlatformItem {
+	label: string;
+	url: string;
+	key: 'github' | 'linkedin' | 'malt' | 'x' | 'youtube';
+}
+
+export interface YouTubeProfile {
+	name?: string;
+	subscribers?: string;
+	avatarUrl?: string;
+	bannerUrl?: string;
+	videoTitle?: string;
+	videoThumbnail?: string;
+	videoUrl?: string;
+}
+
 export interface ContactsProps {
+	items?: PlatformItem[];
 	contributions?: Contributions;
 	contributionsLabel?: string;
 	labels?: {
@@ -32,16 +49,19 @@ export interface ContactsProps {
 		avatarUrl?: string;
 		bannerUrl?: string;
 	};
+	youtubeProfile?: YouTubeProfile;
 }
 
-const items = [
+const defaultItems: PlatformItem[] = [
 	{ label: 'GitHub', url: CONTACT.github, key: 'github' },
 	{ label: 'LinkedIn', url: CONTACT.linkedin, key: 'linkedin' },
 	{ label: 'Malt', url: CONTACT.malt, key: 'malt' },
 	{ label: 'X', url: CONTACT.x, key: 'x' },
+	{ label: 'YouTube', url: 'https://youtube.com', key: 'youtube' },
 ];
 
 export default function Contacts({
+	items = defaultItems,
 	contributions = { total: 0, start: '', levels: '', counts: [] },
 	contributionsLabel = '142 contributions in 2026',
 	labels = {
@@ -55,6 +75,7 @@ export default function Contacts({
 	},
 	githubProfile = {},
 	xProfile = {},
+	youtubeProfile = {},
 }: ContactsProps) {
 	const [open, setOpen] = useState(false);
 	const [contentIndex, setContentIndex] = useState(0);
@@ -69,14 +90,16 @@ export default function Contacts({
 	const popupElementRef = useRef<HTMLDivElement>(null);
 	const activeIconLeftRef = useRef<number>(0);
 
+	const activeItem = items[contentIndex] || items[0];
+
 	const direction = useMemo(
 		() => Math.max(Math.min(contentIndex - prevContentIndex, 1), -1),
 		[contentIndex, prevContentIndex],
 	);
 
 	const avatarSrc = useMemo(
-		() => xProfile?.avatarUrl || githubProfile?.avatarUrl || '/avatar.jpg',
-		[xProfile, githubProfile],
+		() => xProfile?.avatarUrl || githubProfile?.avatarUrl || youtubeProfile?.avatarUrl || '/avatar.jpg',
+		[xProfile, githubProfile, youtubeProfile],
 	);
 
 	function calculateClampedLeft(rawLeft: number, cardWidth: number) {
@@ -169,9 +192,10 @@ export default function Contacts({
 	}, [open, contentIndex]);
 
 	return (
-		<div
+		<motion.div
 			ref={dockRef}
-			className="contacts-dock relative flex items-center gap-1.5 p-1.5 rounded-full bg-white/10 dark:bg-stone-900/60 backdrop-blur-2xl border border-white/20 dark:border-white/10 shadow-[0_10px_35px_-5px_rgba(0,0,0,0.35)] transition-all duration-300 touch-none select-none"
+			layout
+			className="contacts-dock relative flex items-center gap-1.5 p-1.5 rounded-full bg-white/10 dark:bg-stone-900/60 backdrop-blur-2xl border border-white/20 dark:border-white/10 shadow-[0_10px_35px_-5px_rgba(0,0,0,0.35)] transition-colors duration-300 touch-none select-none"
 			onMouseLeave={() => {
 				if (window.matchMedia('(hover: hover)').matches) {
 					setOpen(false);
@@ -182,8 +206,9 @@ export default function Contacts({
 			{items.map((item, index) => {
 				const isActive = open && contentIndex === index;
 				return (
-					<a
-						key={index}
+					<motion.a
+						key={item.key}
+						layout
 						className={`relative z-10 p-2.5 rounded-full transition-colors duration-200 touch-manipulation flex items-center justify-center ${
 							isActive ? '[&_path]:fill-fg scale-105' : '[&_path]:fill-muted hover:[&_path]:fill-fg hover:scale-105 active:scale-95'
 						}`}
@@ -222,12 +247,17 @@ export default function Contacts({
 								<path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
 							</svg>
 						)}
-					</a>
+						{item.key === 'youtube' && (
+							<svg viewBox="0 0 24 24" className="size-6 fill-current transition-colors">
+								<path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z" />
+							</svg>
+						)}
+					</motion.a>
 				);
 			})}
 
 			<AnimatePresence>
-				{open && (
+				{open && activeItem && (
 					<motion.div
 						initial={{ opacity: 0, scale: 0.95 }}
 						animate={{
@@ -246,7 +276,7 @@ export default function Contacts({
 
 						<AnimatePresence mode="wait" initial={false}>
 							<motion.div
-								key={contentIndex}
+								key={activeItem.key}
 								ref={popupElementRef}
 								initial={{ x: 220 * direction, opacity: 0, filter: 'blur(4px)' }}
 								animate={{ x: 0, opacity: 1, filter: 'blur(0px)' }}
@@ -254,7 +284,7 @@ export default function Contacts({
 								transition={{ type: 'spring', stiffness: 320, damping: 28 }}
 								className="relative z-10 w-max h-max max-w-[calc(100vw-2rem)]"
 							>
-								{contentIndex === 0 && (
+								{activeItem.key === 'github' && (
 									<div className="flex flex-col gap-3 p-3.5 max-w-full overflow-hidden">
 										<div className="flex items-center gap-3 [&_img]:rounded-full">
 											<img src={avatarSrc} alt={CONTACT.name} className="size-10 rounded-full object-cover" />
@@ -269,7 +299,7 @@ export default function Contacts({
 									</div>
 								)}
 
-								{contentIndex === 1 && (
+								{activeItem.key === 'linkedin' && (
 									<div className="w-[min(270px,calc(100vw-3rem))] flex flex-col relative overflow-hidden rounded-xl">
 										<div className="h-16 w-full bg-linear-to-br from-[#0A66C2] via-[#0A66C2]/80 to-[#0A66C2]/30" />
 										<div className="bg-surface absolute left-3.5 top-16 -translate-y-1/2 rounded-full p-0.5 shadow-lg [&_img]:size-14 [&_img]:rounded-full z-20">
@@ -298,7 +328,7 @@ export default function Contacts({
 									</div>
 								)}
 
-								{contentIndex === 2 && (
+								{activeItem.key === 'malt' && (
 									<div className="flex flex-col gap-3 p-3.5 w-[min(270px,calc(100vw-3rem))]">
 										<div className="flex items-center gap-3 [&_img]:rounded-md">
 											<img src={avatarSrc} alt={CONTACT.name} className="size-10 rounded-md object-cover" />
@@ -338,7 +368,7 @@ export default function Contacts({
 									</div>
 								)}
 
-								{contentIndex === 3 && (
+								{activeItem.key === 'x' && (
 									<div className="w-[min(270px,calc(100vw-3rem))] flex flex-col relative overflow-hidden rounded-xl">
 										<img
 											className="h-24 w-full object-cover"
@@ -393,6 +423,73 @@ export default function Contacts({
 										</div>
 									</div>
 								)}
+
+								{activeItem.key === 'youtube' && (
+									<div className="w-[min(270px,calc(100vw-3rem))] flex flex-col relative overflow-hidden rounded-xl">
+										<div className="h-20 w-full relative overflow-hidden bg-red-950/40">
+											<img
+												className="h-full w-full object-cover opacity-80"
+												src={youtubeProfile?.bannerUrl || '/banner.jpg'}
+												alt=""
+												onLoad={() => {
+													if (popupElementRef.current) {
+														const rect = popupElementRef.current.getBoundingClientRect();
+														setPopupDimensions((prev) => ({
+															...prev,
+															width: Math.round(rect.width),
+															height: Math.round(rect.height),
+														}));
+													}
+												}}
+											/>
+											<div className="absolute inset-0 bg-gradient-to-t from-stone-900/80 to-transparent" />
+										</div>
+										<div className="bg-surface absolute left-3.5 top-20 -translate-y-1/2 rounded-full p-0.5 shadow-lg [&_img]:size-12 [&_img]:rounded-full z-20">
+											<img src={avatarSrc} alt={CONTACT.name} className="size-12 rounded-full object-cover" />
+										</div>
+										<div className="flex flex-col p-3.5 pt-7">
+											<div className="flex justify-between items-start">
+												<div className="flex flex-col min-w-0 pr-2">
+													<span className="font-semibold text-sm text-fg truncate">
+														{youtubeProfile?.name || 'Mayowa Ali'}
+													</span>
+													<span className="text-muted text-xs truncate">
+														{youtubeProfile?.subscribers || '12.4K Subscribers'}
+													</span>
+												</div>
+												<a
+													className="bg-red-600 hover:bg-red-500 text-white h-fit rounded-full px-3 py-1 text-xs font-semibold transition-all shadow-md hover:scale-105 shrink-0"
+													href={activeItem.url || 'https://youtube.com'}
+													target="_blank"
+													rel="noopener noreferrer"
+												>
+													Subscribe
+												</a>
+											</div>
+
+											<a
+												className="mt-3 relative rounded-lg overflow-hidden group border border-white/10 block shadow-md"
+												href={youtubeProfile?.videoUrl || 'https://youtube.com'}
+												target="_blank"
+												rel="noopener noreferrer"
+											>
+												<img
+													src={youtubeProfile?.videoThumbnail || 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=600&q=80'}
+													alt="Featured Video"
+													className="w-full h-24 object-cover transition-transform duration-300 group-hover:scale-105"
+												/>
+												<div className="absolute inset-0 bg-black/40 flex items-center justify-center transition-colors group-hover:bg-black/25">
+													<div className="size-9 rounded-full bg-red-600/90 text-white flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform">
+														<svg viewBox="0 0 24 24" className="size-4 fill-current translate-x-0.5"><path d="M8 5v14l11-7z" /></svg>
+													</div>
+												</div>
+												<div className="absolute bottom-1.5 left-2 right-2 text-[11px] font-medium text-white drop-shadow-md truncate">
+													{youtubeProfile?.videoTitle || 'Building Liquid Glass Motion in React 19'}
+												</div>
+											</a>
+										</div>
+									</div>
+								)}
 							</motion.div>
 						</AnimatePresence>
 					</motion.div>
@@ -400,6 +497,6 @@ export default function Contacts({
 			</AnimatePresence>
 
 			<div className="absolute inset-0 -top-3" />
-		</div>
+		</motion.div>
 	);
 }
