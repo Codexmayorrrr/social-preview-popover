@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import Contacts, { PlatformItem } from './components/Contacts';
+import Contacts, { PlatformItem, detectPlatformKey } from './components/Contacts';
 import { CONTACT } from './config';
 import { getGithubProfile, getXProfile } from './utils/social-api';
 import { getGithubContributions, type Contributions } from './utils/github-contributions';
@@ -17,7 +17,7 @@ export default function App() {
 	const [activePreset, setActivePreset] = useState<'all' | 'dev' | 'creator'>('all');
 	const [isAddModalOpen, setIsAddModalOpen] = useState(false);
 	const [inputUrl, setInputUrl] = useState('');
-	const [detectedKey, setDetectedKey] = useState<PlatformItem['key']>('github');
+	const [detectedKey, setDetectedKey] = useState<PlatformItem['key']>('generic');
 
 	const [contributions, setContributions] = useState<Contributions>({
 		total: 120,
@@ -47,16 +47,14 @@ export default function App() {
 		loadData();
 	}, []);
 
-	// Auto-detect social platform key from typed URL
+	// Universal Auto-Detection Pipeline: Auto-detects platform key as user types!
 	useEffect(() => {
-		const lower = inputUrl.toLowerCase();
-		if (lower.includes('spotify.com')) setDetectedKey('spotify');
-		else if (lower.includes('instagram.com')) setDetectedKey('instagram');
-		else if (lower.includes('youtube.com') || lower.includes('youtu.be')) setDetectedKey('youtube');
-		else if (lower.includes('linkedin.com')) setDetectedKey('linkedin');
-		else if (lower.includes('x.com') || lower.includes('twitter.com')) setDetectedKey('x');
-		else if (lower.includes('malt.com')) setDetectedKey('malt');
-		else setDetectedKey('github');
+		if (!inputUrl.trim()) {
+			setDetectedKey('generic');
+			return;
+		}
+		const key = detectPlatformKey(inputUrl);
+		setDetectedKey(key);
 	}, [inputUrl]);
 
 	function applyPreset(preset: 'all' | 'dev' | 'creator') {
@@ -74,16 +72,21 @@ export default function App() {
 		e.preventDefault();
 		if (!inputUrl.trim()) return;
 
+		const fullUrl = inputUrl.startsWith('http') ? inputUrl : `https://${inputUrl}`;
+		const key = detectPlatformKey(fullUrl);
+
 		const newItem: PlatformItem = {
-			label: detectedKey.toUpperCase(),
-			url: inputUrl.startsWith('http') ? inputUrl : `https://${inputUrl}`,
-			key: detectedKey,
+			label: key.toUpperCase(),
+			url: fullUrl,
+			key,
 		};
 
-		// If item with same key already exists, replace it, otherwise append
-		const exists = activeItems.some((i) => i.key === detectedKey);
-		if (exists) {
-			setActiveItems(activeItems.map((i) => (i.key === detectedKey ? newItem : i)));
+		// Avoid duplicate key if already present, otherwise append
+		const existingIndex = activeItems.findIndex((i) => i.key === key);
+		if (existingIndex !== -1 && key !== 'generic') {
+			const updated = [...activeItems];
+			updated[existingIndex] = newItem;
+			setActiveItems(updated);
 		} else {
 			setActiveItems([...activeItems, newItem]);
 		}
@@ -179,7 +182,7 @@ export default function App() {
 				/>
 			</footer>
 
-			{/* Ultra-Minimal Add Social Link Modal */}
+			{/* Universal Add Social Link Modal */}
 			{isAddModalOpen && (
 				<div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-md flex items-center justify-center p-4">
 					<div className="bg-stone-900/90 border border-white/15 rounded-2xl p-6 w-full max-w-sm shadow-2xl flex flex-col gap-4 relative">
@@ -197,13 +200,13 @@ export default function App() {
 							<div className="relative">
 								<input
 									type="text"
-									placeholder="Paste URL (e.g. spotify.com, instagram.com)"
+									placeholder="Paste ANY link (e.g. tiktok, twitch, substack, figma, etc.)"
 									value={inputUrl}
 									onChange={(e) => setInputUrl(e.target.value)}
-									className="w-full px-3.5 py-2.5 rounded-xl bg-white/5 border border-white/10 text-xs text-stone-100 placeholder-stone-500 focus:outline-none focus:border-white/30 transition-colors"
+									className="w-full px-3.5 py-2.5 rounded-xl bg-white/5 border border-white/10 text-xs text-stone-100 placeholder-stone-500 focus:outline-none focus:border-white/30 transition-colors pr-24"
 									autoFocus
 								/>
-								<span className="absolute right-3 top-2.5 text-xs text-stone-400 capitalize bg-white/10 px-2 py-0.5 rounded">
+								<span className="absolute right-3 top-2.5 text-[10px] text-stone-300 font-semibold uppercase tracking-wider bg-white/15 px-2 py-0.5 rounded border border-white/10">
 									{detectedKey}
 								</span>
 							</div>
@@ -225,7 +228,7 @@ export default function App() {
 							</div>
 						</form>
 
-						{/* Quick Active Platform List with Remove Buttons */}
+						{/* Active Dock Platforms List with Remove Buttons */}
 						<div className="border-t border-white/10 pt-3 mt-1 flex flex-col gap-2">
 							<span className="text-[11px] text-stone-500 font-medium">Active Dock Platforms:</span>
 							<div className="flex flex-wrap gap-1.5">

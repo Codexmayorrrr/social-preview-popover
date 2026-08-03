@@ -4,20 +4,66 @@ import { CONTACT } from '../config';
 import GithubGraph from './GithubGraph';
 import type { Contributions } from '../utils/github-contributions';
 
+export type PlatformKey =
+	| 'github'
+	| 'linkedin'
+	| 'malt'
+	| 'x'
+	| 'youtube'
+	| 'spotify'
+	| 'instagram'
+	| 'tiktok'
+	| 'twitch'
+	| 'discord'
+	| 'substack'
+	| 'medium'
+	| 'figma'
+	| 'dribbble'
+	| 'behance'
+	| 'producthunt'
+	| 'threads'
+	| 'generic';
+
 export interface PlatformItem {
 	label: string;
 	url: string;
-	key: 'github' | 'linkedin' | 'malt' | 'x' | 'youtube' | 'spotify' | 'instagram';
+	key: PlatformKey;
 }
 
-export interface YouTubeProfile {
-	name?: string;
-	subscribers?: string;
-	avatarUrl?: string;
-	bannerUrl?: string;
-	videoTitle?: string;
-	videoThumbnail?: string;
-	videoUrl?: string;
+export function detectPlatformKey(url: string): PlatformKey {
+	const lower = url.toLowerCase();
+	if (lower.includes('github.com')) return 'github';
+	if (lower.includes('linkedin.com')) return 'linkedin';
+	if (lower.includes('malt.com')) return 'malt';
+	if (lower.includes('x.com') || lower.includes('twitter.com')) return 'x';
+	if (lower.includes('youtube.com') || lower.includes('youtu.be')) return 'youtube';
+	if (lower.includes('spotify.com')) return 'spotify';
+	if (lower.includes('instagram.com')) return 'instagram';
+	if (lower.includes('tiktok.com')) return 'tiktok';
+	if (lower.includes('twitch.tv')) return 'twitch';
+	if (lower.includes('discord.gg') || lower.includes('discord.com')) return 'discord';
+	if (lower.includes('substack.com')) return 'substack';
+	if (lower.includes('medium.com')) return 'medium';
+	if (lower.includes('figma.com')) return 'figma';
+	if (lower.includes('dribbble.com')) return 'dribbble';
+	if (lower.includes('behance.net')) return 'behance';
+	if (lower.includes('producthunt.com')) return 'producthunt';
+	if (lower.includes('threads.net')) return 'threads';
+	return 'generic';
+}
+
+export function extractHandle(url: string, fallback: string = 'dahdagger'): string {
+	try {
+		const parsed = new URL(url.startsWith('http') ? url : `https://${url}`);
+		const parts = parsed.pathname.split('/').filter(Boolean);
+		if (parts.length > 0) {
+			const handle = parts[0];
+			return handle.startsWith('@') ? handle : `@${handle}`;
+		}
+		return parsed.hostname.replace('www.', '');
+	} catch (e) {
+		return `@${fallback}`;
+	}
 }
 
 export interface ContactsProps {
@@ -33,23 +79,9 @@ export interface ContactsProps {
 		maltLocation?: string;
 		xCta?: string;
 	};
-	githubProfile?: {
-		name?: string;
-		login?: string;
-		bio?: string;
-		location?: string;
-		avatarUrl?: string;
-	};
-	xProfile?: {
-		name?: string;
-		handle?: string;
-		bio?: string;
-		followers?: number;
-		following?: number;
-		avatarUrl?: string;
-		bannerUrl?: string;
-	};
-	youtubeProfile?: YouTubeProfile;
+	githubProfile?: any;
+	xProfile?: any;
+	youtubeProfile?: any;
 }
 
 const defaultItems: PlatformItem[] = [
@@ -207,7 +239,7 @@ export default function Contacts({
 				const isActive = open && contentIndex === index;
 				return (
 					<motion.a
-						key={item.key}
+						key={`${item.key}-${index}`}
 						layout
 						className={`relative z-10 p-2.5 rounded-full transition-colors duration-200 touch-manipulation flex items-center justify-center ${
 							isActive ? '[&_path]:fill-fg scale-105' : '[&_path]:fill-muted hover:[&_path]:fill-fg hover:scale-105 active:scale-95'
@@ -260,6 +292,46 @@ export default function Contacts({
 						{item.key === 'instagram' && (
 							<svg viewBox="0 0 24 24" className="size-6 fill-current transition-colors">
 								<path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z" />
+							</svg>
+						)}
+						{item.key === 'tiktok' && (
+							<svg viewBox="0 0 24 24" className="size-6 fill-current transition-colors">
+								<path d="M12.525.02c1.31-.02 2.61-.01 3.91-.02.08 1.53.63 3.09 1.75 4.17 1.12 1.11 2.7 1.62 4.24 1.79v4.03c-1.44-.05-2.89-.35-4.2-.97-.57-.26-1.1-.59-1.62-.93-.01 2.92.01 5.84-.02 8.75-.08 1.4-.54 2.79-1.35 3.94-1.31 1.92-3.58 3.17-5.91 3.21-1.43.08-2.86-.31-4.08-1.03-2.02-1.19-3.44-3.37-3.65-5.71-.02-.5-.03-1-.01-1.49.18-1.9 1.12-3.72 2.58-4.96 1.66-1.44 3.98-2.13 6.15-1.72.02 1.48-.04 2.96-.04 4.44-.99-.32-2.15-.23-3.02.37-.82.56-1.31 1.5-1.28 2.5.01.78.38 1.54.97 2.03.8.67 1.94.84 2.9.46.91-.35 1.59-1.18 1.74-2.15.06-1.05.02-2.1.02-3.15V.02z" />
+							</svg>
+						)}
+						{item.key === 'twitch' && (
+							<svg viewBox="0 0 24 24" className="size-6 fill-current transition-colors">
+								<path d="M11.571 4.714h1.715v5.143H11.57zm4.715 0H18v5.143h-1.714zM6 0L1.714 4.286v15.428h5.143V24l4.286-4.286h3.428L22.286 12V0zm14.571 11.143l-3.428 3.428h-3.429l-3 3v-3H6.857V1.714h13.714z" />
+							</svg>
+						)}
+						{item.key === 'discord' && (
+							<svg viewBox="0 0 24 24" className="size-6 fill-current transition-colors">
+								<path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028c.462-.63.874-1.295 1.226-1.994.021-.041.001-.09-.041-.106a13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.061 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.028zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z" />
+							</svg>
+						)}
+						{item.key === 'substack' && (
+							<svg viewBox="0 0 24 24" className="size-6 fill-current transition-colors">
+								<path d="M22.539 8.242H1.46V5.406h21.08v2.836zM1.46 10.812V24L12 18.11 22.54 24V10.812H1.46zM22.54 0H1.46v2.836h21.08V0z" />
+							</svg>
+						)}
+						{item.key === 'medium' && (
+							<svg viewBox="0 0 24 24" className="size-6 fill-current transition-colors">
+								<path d="M13.54 12a6.8 6.8 0 01-6.77 6.82A6.8 6.8 0 010 12a6.8 6.8 0 016.77-6.82A6.8 6.8 0 0113.54 12zM20.96 12c0 3.54-1.51 6.42-3.38 6.42-1.87 0-3.39-2.88-3.39-6.42s1.52-6.42 3.39-6.42c1.87 0 3.38 2.88 3.38 6.42M24 12c0 3.17-.53 5.75-1.19 5.75-.66 0-1.19-2.58-1.19-5.75s.53-5.75 1.19-5.75C23.47 6.25 24 8.83 24 12z" />
+							</svg>
+						)}
+						{item.key === 'figma' && (
+							<svg viewBox="0 0 24 24" className="size-6 fill-current transition-colors">
+								<path d="M8 24c2.208 0 4-1.792 4-4v-4H8c-2.208 0-4 1.792-4 4s1.792 4 4 4zM4 12c0-2.208 1.792-4 4-4h4v8H8c-2.208 0-4-1.792-4-4zm0-8c0-2.208 1.792-4 4-4h4v8H8c-2.208 0-4-1.792-4-4zm8-4h4c2.208 0 4 1.792 4 4s-1.792 4-4 4h-4V0zm0 8h4c2.208 0 4 1.792 4 4s-1.792 4-4 4h-4V8z" />
+							</svg>
+						)}
+						{item.key === 'dribbble' && (
+							<svg viewBox="0 0 24 24" className="size-6 fill-current transition-colors">
+								<path d="M12 0C5.37 0 0 5.37 0 12s5.37 12 12 12 12-5.37 12-12S18.63 0 12 0zm9.84 10.86c-2.8-.2-5.45.3-7.85 1.34 1.05 2.68 1.83 5.48 2.24 8.35 3.32-1.76 5.61-5.18 5.61-9.69zM12 21.84c-.39 0-.77-.03-1.15-.08-.34-2.61-1.07-5.17-2.06-7.62 2.63-1.12 5.51-1.63 8.52-1.39-.37 3.86-2.58 7.15-5.31 9.09zm-5.46-3.13c-2.83-1.89-4.7-5.07-4.7-8.71 0-.6.06-1.19.16-1.77 3.54 1.34 6.94 3.34 9.77 5.86-1.42 2.92-2.65 5.92-3.6 9.02-1.03-.43-1.91-1.12-1.63-4.4zm-4.38-12.7c2.47-1.34 5.32-2.01 8.34-1.84 2.87 2.11 5.32 4.67 7.15 7.55-2.8-.24-5.5.21-7.98 1.25C7.03 10.45 4.3 8.5 2.16 6.01z" />
+							</svg>
+						)}
+						{item.key === 'generic' && (
+							<svg viewBox="0 0 24 24" className="size-6 fill-current transition-colors">
+								<path d="M12 2a10 10 0 100 20 10 10 0 000-20zm1 14.93V15a1 1 0 10-2 0v1.93A8.001 8.001 0 014.07 13H6a1 1 0 100-2H4.07A8.001 8.001 0 0111 4.07V6a1 1 0 102 0V4.07A8.001 8.001 0 0119.93 11H18a1 1 0 100 2h1.93A8.001 8.001 0 0113 16.93z" />
 							</svg>
 						)}
 					</motion.a>
@@ -368,13 +440,6 @@ export default function Contacts({
 												{labels?.maltLocation || 'Remote'}
 											</div>
 										</div>
-										<div className="text-muted flex flex-wrap gap-2 text-xs">
-											{['React', 'TypeScript', 'Node'].map((skill) => (
-												<span key={skill} className="ring-white/10 dark:ring-white/10 rounded-md px-2 py-0.5 ring bg-white/5">
-													{skill}
-												</span>
-											))}
-										</div>
 									</div>
 								)}
 
@@ -404,7 +469,7 @@ export default function Contacts({
 													<span className="font-semibold text-sm text-fg truncate">
 														{xProfile?.name || githubProfile?.name || CONTACT.name}
 													</span>
-													<span className="text-muted text-xs truncate">{xProfile?.handle || CONTACT.twitterHandle}</span>
+													<span className="text-muted text-xs truncate">{extractHandle(activeItem.url, 'dahdagger')}</span>
 												</div>
 												<a
 													className="bg-fg text-bg hover:bg-fg/90 h-fit rounded-full px-3.5 py-1 text-xs font-semibold transition-all mt-5 shadow-md hover:scale-105 shrink-0"
@@ -419,16 +484,6 @@ export default function Contacts({
 												<p className="text-muted text-xs mt-2.5 max-w-[240px] leading-relaxed">
 													{xProfile?.bio || githubProfile?.bio}
 												</p>
-											)}
-											{Boolean(xProfile?.followers) && (
-												<div className="flex items-center gap-3.5 mt-2.5 text-xs text-muted">
-													<span>
-														<strong className="text-fg font-semibold">{xProfile?.following ?? 353}</strong> Following
-													</span>
-													<span>
-														<strong className="text-fg font-semibold">{xProfile?.followers ?? 115}</strong> Followers
-													</span>
-												</div>
 											)}
 										</div>
 									</div>
@@ -469,34 +524,13 @@ export default function Contacts({
 												</div>
 												<a
 													className="bg-red-600 hover:bg-red-500 text-white h-fit rounded-full px-3 py-1 text-xs font-semibold transition-all shadow-md hover:scale-105 shrink-0"
-													href={activeItem.url || 'https://youtube.com'}
+													href={activeItem.url}
 													target="_blank"
 													rel="noopener noreferrer"
 												>
 													Subscribe
 												</a>
 											</div>
-
-											<a
-												className="mt-3 relative rounded-lg overflow-hidden group border border-white/10 block shadow-md"
-												href={youtubeProfile?.videoUrl || 'https://youtube.com'}
-												target="_blank"
-												rel="noopener noreferrer"
-											>
-												<img
-													src={youtubeProfile?.videoThumbnail || 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=600&q=80'}
-													alt="Featured Video"
-													className="w-full h-24 object-cover transition-transform duration-300 group-hover:scale-105"
-												/>
-												<div className="absolute inset-0 bg-black/40 flex items-center justify-center transition-colors group-hover:bg-black/25">
-													<div className="size-9 rounded-full bg-red-600/90 text-white flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform">
-														<svg viewBox="0 0 24 24" className="size-4 fill-current translate-x-0.5"><path d="M8 5v14l11-7z" /></svg>
-													</div>
-												</div>
-												<div className="absolute bottom-1.5 left-2 right-2 text-[11px] font-medium text-white drop-shadow-md truncate">
-													{youtubeProfile?.videoTitle || 'Building Liquid Glass Motion in React 19'}
-												</div>
-											</a>
 										</div>
 									</div>
 								)}
@@ -525,11 +559,6 @@ export default function Contacts({
 												<span className="text-xs font-semibold text-fg truncate">Midnight City</span>
 												<span className="text-[11px] text-muted truncate">M83 • Hurry Up, We're Dreaming</span>
 											</div>
-											<div className="flex items-center gap-0.5 shrink-0">
-												<span className="w-0.5 h-3 bg-emerald-400 animate-bounce" />
-												<span className="w-0.5 h-4 bg-emerald-400 animate-bounce delay-75" />
-												<span className="w-0.5 h-2 bg-emerald-400 animate-bounce delay-150" />
-											</div>
 										</a>
 									</div>
 								)}
@@ -540,7 +569,7 @@ export default function Contacts({
 											<div className="flex items-center gap-2.5">
 												<img src={avatarSrc} alt={CONTACT.name} className="size-9 rounded-full object-cover ring-2 ring-pink-500/50" />
 												<div className="flex flex-col min-w-0">
-													<span className="font-semibold text-xs text-fg truncate">@{CONTACT.twitterHandle || 'dahdagger'}</span>
+													<span className="font-semibold text-xs text-fg truncate">{extractHandle(activeItem.url, 'dahdagger')}</span>
 													<span className="text-[11px] text-muted">1.8K Followers</span>
 												</div>
 											</div>
@@ -553,11 +582,33 @@ export default function Contacts({
 												Follow
 											</a>
 										</div>
-										<div className="grid grid-cols-3 gap-1.5 rounded-lg overflow-hidden border border-white/10">
-											<img src="https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=200&q=80" alt="" className="size-16 object-cover hover:opacity-80 transition-opacity" />
-											<img src="https://images.unsplash.com/photo-1518770660439-4636190af475?w=200&q=80" alt="" className="size-16 object-cover hover:opacity-80 transition-opacity" />
-											<img src="https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?w=200&q=80" alt="" className="size-16 object-cover hover:opacity-80 transition-opacity" />
+									</div>
+								)}
+
+								{/* Universal Fallback Card for TikTok, Twitch, Substack, Discord, Figma, Dribbble, Generic */}
+								{['tiktok', 'twitch', 'discord', 'substack', 'medium', 'figma', 'dribbble', 'behance', 'producthunt', 'threads', 'generic'].includes(activeItem.key) && (
+									<div className="flex flex-col gap-3 p-3.5 w-[min(270px,calc(100vw-3rem))]">
+										<div className="flex items-center gap-3">
+											<div className="size-10 rounded-xl bg-white/10 border border-white/15 flex items-center justify-center text-fg font-bold uppercase text-xs shrink-0">
+												{activeItem.key.slice(0, 2)}
+											</div>
+											<div className="flex flex-col min-w-0">
+												<span className="font-semibold text-sm text-fg truncate capitalize">
+													{activeItem.key}
+												</span>
+												<span className="text-muted text-xs truncate">
+													{extractHandle(activeItem.url, 'profile')}
+												</span>
+											</div>
 										</div>
+										<a
+											href={activeItem.url}
+											target="_blank"
+											rel="noopener noreferrer"
+											className="w-full text-center py-2 rounded-lg bg-white/10 hover:bg-white/20 border border-white/15 text-fg font-medium text-xs transition-colors"
+										>
+											Visit {activeItem.key.toUpperCase()} Profile
+										</a>
 									</div>
 								)}
 							</motion.div>
