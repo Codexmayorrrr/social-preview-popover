@@ -13,7 +13,28 @@ const initialItems: PlatformItem[] = [
 ];
 
 export default function App() {
-	const [activeItems, setActiveItems] = useState<PlatformItem[]>(initialItems);
+	const [isAdminMode, setIsAdminMode] = useState<boolean>(() => {
+		if (typeof window !== 'undefined') {
+			const params = new URLSearchParams(window.location.search);
+			return params.get('admin') === 'true' || window.location.pathname.startsWith('/admin');
+		}
+		return false;
+	});
+
+	const [activeItems, setActiveItems] = useState<PlatformItem[]>(() => {
+		if (typeof window !== 'undefined') {
+			const saved = localStorage.getItem('dock_bio_items');
+			if (saved) {
+				try {
+					return JSON.parse(saved);
+				} catch (e) {
+					console.error('Failed to parse saved dock items:', e);
+				}
+			}
+		}
+		return initialItems;
+	});
+
 	const [activePreset, setActivePreset] = useState<'all' | 'dev' | 'creator'>('all');
 	const [isAddModalOpen, setIsAddModalOpen] = useState(false);
 	const [inputUrl, setInputUrl] = useState('');
@@ -28,6 +49,13 @@ export default function App() {
 
 	const [githubProfile, setGithubProfile] = useState<any>(null);
 	const [xProfile, setXProfile] = useState<any>(null);
+
+	// Persist active items to localStorage whenever updated
+	useEffect(() => {
+		if (typeof window !== 'undefined') {
+			localStorage.setItem('dock_bio_items', JSON.stringify(activeItems));
+		}
+	}, [activeItems]);
 
 	useEffect(() => {
 		async function loadData() {
@@ -47,7 +75,7 @@ export default function App() {
 		loadData();
 	}, []);
 
-	// Universal Auto-Detection Pipeline: Auto-detects platform key as user types!
+	// Auto-detect platform key as user types in Add Social modal
 	useEffect(() => {
 		if (!inputUrl.trim()) {
 			setDetectedKey('generic');
@@ -81,7 +109,6 @@ export default function App() {
 			key,
 		};
 
-		// Avoid duplicate key if already present, otherwise append
 		const existingIndex = activeItems.findIndex((i) => i.key === key);
 		if (existingIndex !== -1 && key !== 'generic') {
 			const updated = [...activeItems];
@@ -101,46 +128,79 @@ export default function App() {
 		}
 	}
 
+	function toggleMode() {
+		const nextMode = !isAdminMode;
+		setIsAdminMode(nextMode);
+		if (typeof window !== 'undefined') {
+			const url = new URL(window.location.href);
+			if (nextMode) {
+				url.searchParams.set('admin', 'true');
+			} else {
+				url.searchParams.delete('admin');
+			}
+			window.history.pushState({}, '', url.toString());
+		}
+	}
+
 	return (
 		<main className="min-h-screen bg-stone-950 text-stone-100 flex flex-col items-center justify-between p-6 sm:p-12 font-sans antialiased relative">
-			{/* Muted Preset Filter & Add Link Bar */}
+			{/* Minimal Header with Mode Awareness */}
 			<header className="w-full max-w-xl flex items-center justify-between z-20 gap-2 flex-wrap">
 				<span className="text-xs font-serif italic text-stone-500 tracking-wider">mayowa ali</span>
-				<div className="flex items-center gap-2">
-					<div className="flex items-center gap-1.5 bg-stone-900/80 p-1 rounded-full border border-white/10 text-xs">
+
+				{isAdminMode ? (
+					/* Admin Mode Controls */
+					<div className="flex items-center gap-2">
+						<div className="flex items-center gap-1.5 bg-stone-900/80 p-1 rounded-full border border-white/10 text-xs">
+							<button
+								onClick={() => applyPreset('all')}
+								className={`px-3 py-1 rounded-full transition-colors ${
+									activePreset === 'all' ? 'bg-white/15 text-white font-medium' : 'text-stone-400 hover:text-white'
+								}`}
+							>
+								All
+							</button>
+							<button
+								onClick={() => applyPreset('dev')}
+								className={`px-3 py-1 rounded-full transition-colors ${
+									activePreset === 'dev' ? 'bg-white/15 text-white font-medium' : 'text-stone-400 hover:text-white'
+								}`}
+							>
+								Dev
+							</button>
+							<button
+								onClick={() => applyPreset('creator')}
+								className={`px-3 py-1 rounded-full transition-colors ${
+									activePreset === 'creator' ? 'bg-white/15 text-white font-medium' : 'text-stone-400 hover:text-white'
+								}`}
+							>
+								Creator
+							</button>
+						</div>
+
 						<button
-							onClick={() => applyPreset('all')}
-							className={`px-3 py-1 rounded-full transition-colors ${
-								activePreset === 'all' ? 'bg-white/15 text-white font-medium' : 'text-stone-400 hover:text-white'
-							}`}
+							onClick={() => setIsAddModalOpen(true)}
+							className="px-3.5 py-1.5 rounded-full bg-white/10 hover:bg-white/20 transition-all text-xs font-medium text-white border border-white/15 flex items-center gap-1 shadow-md"
 						>
-							All
+							<span>+</span> Add Social
 						</button>
+
 						<button
-							onClick={() => applyPreset('dev')}
-							className={`px-3 py-1 rounded-full transition-colors ${
-								activePreset === 'dev' ? 'bg-white/15 text-white font-medium' : 'text-stone-400 hover:text-white'
-							}`}
+							onClick={toggleMode}
+							className="px-3 py-1.5 rounded-full bg-emerald-500/20 text-emerald-300 hover:bg-emerald-500/30 transition-all text-xs font-medium border border-emerald-500/30"
 						>
-							Dev
-						</button>
-						<button
-							onClick={() => applyPreset('creator')}
-							className={`px-3 py-1 rounded-full transition-colors ${
-								activePreset === 'creator' ? 'bg-white/15 text-white font-medium' : 'text-stone-400 hover:text-white'
-							}`}
-						>
-							Creator
+							👁️ View Public
 						</button>
 					</div>
-
+				) : (
+					/* Public View Mode (Pure Minimalist, No Admin Buttons) */
 					<button
-						onClick={() => setIsAddModalOpen(true)}
-						className="px-3.5 py-1.5 rounded-full bg-white/10 hover:bg-white/20 transition-all text-xs font-medium text-white border border-white/15 flex items-center gap-1 shadow-md"
+						onClick={toggleMode}
+						className="text-xs text-stone-600 hover:text-stone-400 transition-colors font-mono opacity-60 hover:opacity-100"
 					>
-						<span>+</span> Add Social
+						admin mode
 					</button>
-				</div>
+				)}
 			</header>
 
 			{/* Clean Minimal Hero Layout */}
@@ -182,8 +242,8 @@ export default function App() {
 				/>
 			</footer>
 
-			{/* Universal Add Social Link Modal */}
-			{isAddModalOpen && (
+			{/* Admin Mode: Add Social Link Modal */}
+			{isAdminMode && isAddModalOpen && (
 				<div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-md flex items-center justify-center p-4">
 					<div className="bg-stone-900/90 border border-white/15 rounded-2xl p-6 w-full max-w-sm shadow-2xl flex flex-col gap-4 relative">
 						<div className="flex items-center justify-between">
