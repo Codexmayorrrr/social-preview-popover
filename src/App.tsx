@@ -69,7 +69,6 @@ function getUserHandleFromUrl(): string {
 export default function App() {
 	const [userHandle] = useState<string>(() => getUserHandleFromUrl());
 	const [claimInput, setClaimInput] = useState<string>('');
-	const [selectedRoleTemplate, setSelectedRoleTemplate] = useState<typeof ROLE_TEMPLATES[0]>(ROLE_TEMPLATES[0]);
 
 	const [isLandingPage] = useState<boolean>(() => {
 		if (typeof window !== 'undefined') {
@@ -102,7 +101,14 @@ export default function App() {
 		return userHandle === 'mayowa' ? defaultMayowaBio : { ...defaultNewUserBio, displayName: `@${userHandle}` };
 	});
 
-	const [isBioModalOpen, setIsBioModalOpen] = useState(false);
+	// Auto-open bio modal on newly claimed handles
+	const [isBioModalOpen, setIsBioModalOpen] = useState<boolean>(() => {
+		if (typeof window !== 'undefined' && isAdminMode && userHandle !== 'mayowa') {
+			const setupDone = localStorage.getItem(`dock_bio_setup_done_${userHandle}`);
+			return !setupDone;
+		}
+		return false;
+	});
 
 	// All links owned by this specific user
 	const [allUserItems, setAllUserItems] = useState<PlatformItem[]>(() => {
@@ -195,14 +201,14 @@ export default function App() {
 		const cleaned = claimInput.trim().toLowerCase().replace(/[^a-z0-9_-]/g, '');
 		if (!cleaned) return;
 
-		// Initialize empty dock [] and selected role template bio for new user handle
+		// Initialize empty dock [] and default bio for new user handle
 		if (typeof window !== 'undefined') {
 			const initialBio: UserBioData = {
 				displayName: `@${cleaned}`,
-				role: selectedRoleTemplate.role,
+				role: 'Creator & Builder',
 				location: 'London, UK',
 				workStyle: 'remotely',
-				specialties: selectedRoleTemplate.specialties,
+				specialties: 'content creation, UI design, and digital products',
 			};
 			localStorage.setItem(`dock_bio_items_${cleaned}`, JSON.stringify([]));
 			localStorage.setItem(`dock_bio_data_${cleaned}`, JSON.stringify(initialBio));
@@ -248,7 +254,14 @@ export default function App() {
 		});
 	}
 
-	// Onboarding View with Role Selection (/join or ?join=true)
+	function handleSaveBio() {
+		if (typeof window !== 'undefined') {
+			localStorage.setItem(`dock_bio_setup_done_${userHandle}`, 'true');
+		}
+		setIsBioModalOpen(false);
+	}
+
+	// Uncluttered Onboarding View (/join or ?join=true)
 	if (isLandingPage) {
 		return (
 			<main className="min-h-screen bg-stone-950 text-stone-100 flex flex-col items-center justify-between p-6 sm:p-12 font-sans antialiased relative">
@@ -265,7 +278,7 @@ export default function App() {
 						Create your interactive Apple Liquid Glass bio dock in under 30 seconds.
 					</p>
 
-					<form onSubmit={handleClaimHandle} className="flex flex-col gap-5 w-full max-w-md">
+					<form onSubmit={handleClaimHandle} className="flex flex-col sm:flex-row items-center gap-3 w-full max-w-md">
 						<div className="relative flex-1 w-full">
 							<span className="absolute left-3.5 top-3 text-xs text-stone-500 font-mono">
 								dock.bio/@
@@ -280,30 +293,9 @@ export default function App() {
 							/>
 						</div>
 
-						{/* Quick Role Template Selector for Onboarding */}
-						<div className="flex flex-col gap-2 text-left">
-							<span className="text-[11px] text-stone-500 font-medium uppercase tracking-wider text-center">Select Your Role Template</span>
-							<div className="flex flex-wrap justify-center gap-1.5">
-								{ROLE_TEMPLATES.map((t, idx) => (
-									<button
-										key={idx}
-										type="button"
-										onClick={() => setSelectedRoleTemplate(t)}
-										className={`text-xs px-3 py-1.5 rounded-full border transition-all ${
-											selectedRoleTemplate.role === t.role
-												? 'bg-white/20 text-white font-medium border-white/40 shadow-sm'
-												: 'bg-white/5 text-stone-400 border-white/10 hover:text-stone-200'
-										}`}
-									>
-										{t.label}
-									</button>
-								))}
-							</div>
-						</div>
-
 						<button
 							type="submit"
-							className="w-full py-3.5 rounded-xl bg-stone-100 hover:bg-white text-stone-900 font-semibold text-xs transition-colors shadow-lg mt-1"
+							className="w-full sm:w-auto px-6 py-3 rounded-xl bg-stone-100 hover:bg-white text-stone-900 font-semibold text-xs transition-colors shrink-0 shadow-lg"
 						>
 							Claim & Launch →
 						</button>
@@ -426,9 +418,9 @@ export default function App() {
 				<div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-md flex items-center justify-center p-4">
 					<div className="bg-stone-900/90 border border-white/15 rounded-2xl p-6 w-full max-w-md shadow-2xl flex flex-col gap-5 relative">
 						<div className="flex items-center justify-between">
-							<h3 className="font-serif italic text-base text-stone-100">Interactive Bio Builder</h3>
+							<h3 className="font-serif italic text-base text-stone-100">Setup Your Bio Intro</h3>
 							<button
-								onClick={() => setIsBioModalOpen(false)}
+								onClick={handleSaveBio}
 								className="text-stone-500 hover:text-stone-200 text-sm p-1"
 							>
 								✕
@@ -508,10 +500,10 @@ export default function App() {
 						</div>
 
 						<button
-							onClick={() => setIsBioModalOpen(false)}
+							onClick={handleSaveBio}
 							className="w-full py-2.5 rounded-xl bg-stone-100 text-stone-900 font-medium text-xs hover:bg-white transition-colors mt-1"
 						>
-							Save Bio
+							Save Bio & Continue →
 						</button>
 					</div>
 				</div>
