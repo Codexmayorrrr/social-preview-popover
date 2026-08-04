@@ -13,7 +13,7 @@ const initialItems: PlatformItem[] = [
 ];
 
 export default function App() {
-	const [isAdminMode, setIsAdminMode] = useState<boolean>(() => {
+	const [isAdminMode] = useState<boolean>(() => {
 		if (typeof window !== 'undefined') {
 			const params = new URLSearchParams(window.location.search);
 			return params.get('admin') === 'true' || window.location.pathname.startsWith('/admin');
@@ -128,28 +128,14 @@ export default function App() {
 		}
 	}
 
-	function toggleMode() {
-		const nextMode = !isAdminMode;
-		setIsAdminMode(nextMode);
-		if (typeof window !== 'undefined') {
-			const url = new URL(window.location.href);
-			if (nextMode) {
-				url.searchParams.set('admin', 'true');
-			} else {
-				url.searchParams.delete('admin');
-			}
-			window.history.pushState({}, '', url.toString());
-		}
-	}
-
 	return (
 		<main className="min-h-screen bg-stone-950 text-stone-100 flex flex-col items-center justify-between p-6 sm:p-12 font-sans antialiased relative">
-			{/* Minimal Header with Mode Awareness */}
+			{/* Minimal Header */}
 			<header className="w-full max-w-xl flex items-center justify-between z-20 gap-2 flex-wrap">
 				<span className="text-xs font-serif italic text-stone-500 tracking-wider">mayowa ali</span>
 
-				{isAdminMode ? (
-					/* Admin Mode Controls */
+				{isAdminMode && (
+					/* Admin Mode Controls (Dedicated to Admin Page) */
 					<div className="flex items-center gap-2">
 						<div className="flex items-center gap-1.5 bg-stone-900/80 p-1 rounded-full border border-white/10 text-xs">
 							<button
@@ -184,22 +170,7 @@ export default function App() {
 						>
 							<span>+</span> Add Social
 						</button>
-
-						<button
-							onClick={toggleMode}
-							className="px-3 py-1.5 rounded-full bg-emerald-500/20 text-emerald-300 hover:bg-emerald-500/30 transition-all text-xs font-medium border border-emerald-500/30"
-						>
-							👁️ View Public
-						</button>
 					</div>
-				) : (
-					/* Public View Mode (Pure Minimalist, No Admin Buttons) */
-					<button
-						onClick={toggleMode}
-						className="text-xs text-stone-600 hover:text-stone-400 transition-colors font-mono opacity-60 hover:opacity-100"
-					>
-						admin mode
-					</button>
 				)}
 			</header>
 
