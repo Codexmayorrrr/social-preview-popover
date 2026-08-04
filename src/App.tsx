@@ -17,12 +17,12 @@ function getUserHandleFromUrl(): string {
 	const hostname = window.location.hostname;
 	const parts = hostname.split('.');
 
-	// Wildcard subdomain detection (e.g. "mayowa.vercel.app")
+	// Subdomain detection (e.g. "mayowa.dock.bio" or "mayowa.vercel.app")
 	if (parts.length >= 3 && !['www', 'localhost', '127'].includes(parts[0])) {
 		return parts[0];
 	}
 
-	// Subpath handle detection (e.g. "/@mayowa" or "/mayowa")
+	// Dynamic Single-App Wrapper Handle Detection (e.g. "/@mayowa" or "/mayowa")
 	const pathParts = window.location.pathname.split('/').filter(Boolean);
 	if (pathParts.length > 0 && !['admin', 'join'].includes(pathParts[0])) {
 		return pathParts[0].replace('@', '');
@@ -35,7 +35,7 @@ export default function App() {
 	const [userHandle, setUserHandle] = useState<string>('mayowa');
 	const [claimInput, setClaimInput] = useState<string>('');
 
-	const [isLandingPage, setIsLandingPage] = useState<boolean>(() => {
+	const [isLandingPage] = useState<boolean>(() => {
 		if (typeof window !== 'undefined') {
 			const params = new URLSearchParams(window.location.search);
 			return params.get('join') === 'true' || window.location.pathname === '/join';
@@ -130,12 +130,12 @@ export default function App() {
 		}
 	}
 
-	function handleClaimSubdomain(e: React.FormEvent) {
+	function handleClaimHandle(e: React.FormEvent) {
 		e.preventDefault();
 		const cleaned = claimInput.trim().toLowerCase().replace(/[^a-z0-9_-]/g, '');
 		if (!cleaned) return;
 
-		// Initialize default starter items for new claimed handle
+		// Initialize default starter items for new handle inside single Vercel app wrapper
 		if (typeof window !== 'undefined') {
 			localStorage.setItem(`dock_bio_items_${cleaned}`, JSON.stringify(initialItems));
 			window.location.href = `/@${cleaned}?admin=true`;
@@ -174,7 +174,7 @@ export default function App() {
 		}
 	}
 
-	// Landing Page View (for claiming subdomains at /join or ?join=true)
+	// Single App Wrapper Landing Page View (Claim handle within the site app)
 	if (isLandingPage) {
 		return (
 			<main className="min-h-screen bg-stone-950 text-stone-100 flex flex-col items-center justify-between p-6 sm:p-12 font-sans antialiased relative">
@@ -190,26 +190,26 @@ export default function App() {
 
 				<section className="my-auto py-16 flex flex-col gap-8 max-w-xl text-center items-center w-full z-10">
 					<h1 className="font-serif text-4xl sm:text-5xl tracking-tight italic text-stone-100">
-						Claim Your Vercel Subdomain
+						Claim Your Bio Handle
 					</h1>
 
 					<p className="text-stone-400 text-sm sm:text-base max-w-md leading-relaxed">
 						Create your interactive Apple Liquid Glass bio dock in under 30 seconds.
 					</p>
 
-					<form onSubmit={handleClaimSubdomain} className="flex flex-col sm:flex-row items-center gap-3 w-full max-w-md">
+					<form onSubmit={handleClaimHandle} className="flex flex-col sm:flex-row items-center gap-3 w-full max-w-md">
 						<div className="relative flex-1 w-full">
+							<span className="absolute left-3.5 top-3 text-xs text-stone-500 font-mono">
+								dock.bio/@
+							</span>
 							<input
 								type="text"
 								placeholder="yourname"
 								value={claimInput}
 								onChange={(e) => setClaimInput(e.target.value)}
-								className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/15 text-sm text-stone-100 placeholder-stone-600 focus:outline-none focus:border-white/40 transition-colors pr-24"
+								className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/15 text-sm text-stone-100 placeholder-stone-600 focus:outline-none focus:border-white/40 transition-colors pl-24"
 								autoFocus
 							/>
-							<span className="absolute right-3 top-3 text-xs text-stone-500 font-mono">
-								.vercel.app
-							</span>
 						</div>
 
 						<button
@@ -244,10 +244,10 @@ export default function App() {
 
 	return (
 		<main className="min-h-screen bg-stone-950 text-stone-100 flex flex-col items-center justify-between p-6 sm:p-12 font-sans antialiased relative">
-			{/* Minimal Header */}
+			{/* Single App Wrapper Header */}
 			<header className="w-full max-w-xl flex items-center justify-between z-20 gap-2 flex-wrap">
 				<span className="text-xs font-serif italic text-stone-500 tracking-wider">
-					{userHandle}.vercel.app
+					dock.bio/@{userHandle}
 				</span>
 
 				{isAdminMode && (
