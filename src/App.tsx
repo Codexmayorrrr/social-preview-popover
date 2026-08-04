@@ -12,7 +12,28 @@ const initialItems: PlatformItem[] = [
 	{ label: 'YouTube', url: 'https://youtube.com', key: 'youtube' },
 ];
 
+function getUserHandleFromUrl(): string {
+	if (typeof window === 'undefined') return 'mayowa';
+	const hostname = window.location.hostname;
+	const parts = hostname.split('.');
+
+	// Wildcard subdomain detection (e.g. "mayowa.vercel.app")
+	if (parts.length >= 3 && !['www', 'localhost', '127'].includes(parts[0])) {
+		return parts[0];
+	}
+
+	// Subpath handle detection (e.g. "/@mayowa" or "/mayowa")
+	const pathParts = window.location.pathname.split('/').filter(Boolean);
+	if (pathParts.length > 0 && pathParts[0] !== 'admin') {
+		return pathParts[0].replace('@', '');
+	}
+
+	return 'mayowa';
+}
+
 export default function App() {
+	const [userHandle, setUserHandle] = useState<string>('mayowa');
+
 	const [isAdminMode] = useState<boolean>(() => {
 		if (typeof window !== 'undefined') {
 			const params = new URLSearchParams(window.location.search);
@@ -21,9 +42,13 @@ export default function App() {
 		return false;
 	});
 
+	useEffect(() => {
+		setUserHandle(getUserHandleFromUrl());
+	}, []);
+
 	const [activeItems, setActiveItems] = useState<PlatformItem[]>(() => {
 		if (typeof window !== 'undefined') {
-			const saved = localStorage.getItem('dock_bio_items');
+			const saved = localStorage.getItem(`dock_bio_items_${userHandle}`);
 			if (saved) {
 				try {
 					return JSON.parse(saved);
@@ -50,12 +75,12 @@ export default function App() {
 	const [githubProfile, setGithubProfile] = useState<any>(null);
 	const [xProfile, setXProfile] = useState<any>(null);
 
-	// Persist active items to localStorage whenever updated
+	// Persist active items per user handle
 	useEffect(() => {
 		if (typeof window !== 'undefined') {
-			localStorage.setItem('dock_bio_items', JSON.stringify(activeItems));
+			localStorage.setItem(`dock_bio_items_${userHandle}`, JSON.stringify(activeItems));
 		}
-	}, [activeItems]);
+	}, [activeItems, userHandle]);
 
 	useEffect(() => {
 		async function loadData() {
@@ -132,7 +157,9 @@ export default function App() {
 		<main className="min-h-screen bg-stone-950 text-stone-100 flex flex-col items-center justify-between p-6 sm:p-12 font-sans antialiased relative">
 			{/* Minimal Header */}
 			<header className="w-full max-w-xl flex items-center justify-between z-20 gap-2 flex-wrap">
-				<span className="text-xs font-serif italic text-stone-500 tracking-wider">mayowa ali</span>
+				<span className="text-xs font-serif italic text-stone-500 tracking-wider">
+					{userHandle}.vercel.app
+				</span>
 
 				{isAdminMode && (
 					/* Admin Mode Controls (Dedicated to Admin Page) */
@@ -176,8 +203,8 @@ export default function App() {
 
 			{/* Clean Minimal Hero Layout */}
 			<section className="my-auto py-16 flex flex-col gap-6 max-w-xl text-left w-full z-10">
-				<h1 className="font-serif text-3xl sm:text-4xl tracking-tight italic text-stone-100">
-					Mayowa Ali
+				<h1 className="font-serif text-3xl sm:text-4xl tracking-tight italic text-stone-100 capitalize">
+					{userHandle === 'mayowa' ? 'Mayowa Ali' : userHandle}
 				</h1>
 
 				<div className="text-stone-400 leading-relaxed text-sm sm:text-base flex flex-col gap-4">
