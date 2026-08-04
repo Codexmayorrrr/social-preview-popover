@@ -12,6 +12,9 @@ const initialItems: PlatformItem[] = [
 	{ label: 'YouTube', url: 'https://youtube.com', key: 'youtube' },
 ];
 
+const DEV_KEYS = ['github', 'x', 'linkedin', 'malt', 'medium', 'figma', 'dribbble', 'behance', 'producthunt', 'generic'];
+const CREATOR_KEYS = ['youtube', 'spotify', 'x', 'instagram', 'tiktok', 'twitch', 'substack', 'threads', 'medium', 'generic'];
+
 function getUserHandleFromUrl(): string {
 	if (typeof window === 'undefined') return 'mayowa';
 	const hostname = window.location.hostname;
@@ -51,7 +54,8 @@ export default function App() {
 		return false;
 	});
 
-	const [activeItems, setActiveItems] = useState<PlatformItem[]>(() => {
+	// All links owned by this specific user
+	const [allUserItems, setAllUserItems] = useState<PlatformItem[]>(() => {
 		if (typeof window !== 'undefined') {
 			const saved = localStorage.getItem(`dock_bio_items_${userHandle}`);
 			if (saved) {
@@ -62,10 +66,11 @@ export default function App() {
 				}
 			}
 		}
-		// Default demo handle "mayowa" gets initialItems, brand new user handles start with empty []
 		return userHandle === 'mayowa' ? initialItems : [];
 	});
 
+	// Currently displayed active items (after preset filter)
+	const [activeItems, setActiveItems] = useState<PlatformItem[]>(allUserItems);
 	const [activePreset, setActivePreset] = useState<'all' | 'dev' | 'creator'>('all');
 	const [isAddModalOpen, setIsAddModalOpen] = useState(false);
 	const [inputUrl, setInputUrl] = useState('');
@@ -81,12 +86,20 @@ export default function App() {
 	const [githubProfile, setGithubProfile] = useState<any>(null);
 	const [xProfile, setXProfile] = useState<any>(null);
 
-	// Persist active items per user handle
+	// Sync active items with allUserItems when allUserItems changes
 	useEffect(() => {
 		if (typeof window !== 'undefined') {
-			localStorage.setItem(`dock_bio_items_${userHandle}`, JSON.stringify(activeItems));
+			localStorage.setItem(`dock_bio_items_${userHandle}`, JSON.stringify(allUserItems));
 		}
-	}, [activeItems, userHandle]);
+		// Re-apply current preset on updated user items
+		if (activePreset === 'dev') {
+			setActiveItems(allUserItems.filter((i) => DEV_KEYS.includes(i.key)));
+		} else if (activePreset === 'creator') {
+			setActiveItems(allUserItems.filter((i) => CREATOR_KEYS.includes(i.key)));
+		} else {
+			setActiveItems(allUserItems);
+		}
+	}, [allUserItems, userHandle, activePreset]);
 
 	useEffect(() => {
 		async function loadData() {
@@ -119,11 +132,11 @@ export default function App() {
 	function applyPreset(preset: 'all' | 'dev' | 'creator') {
 		setActivePreset(preset);
 		if (preset === 'dev') {
-			setActiveItems(initialItems.filter((i) => ['github', 'x', 'linkedin'].includes(i.key)));
+			setActiveItems(allUserItems.filter((i) => DEV_KEYS.includes(i.key)));
 		} else if (preset === 'creator') {
-			setActiveItems(initialItems.filter((i) => ['youtube', 'x', 'linkedin', 'malt'].includes(i.key)));
+			setActiveItems(allUserItems.filter((i) => CREATOR_KEYS.includes(i.key)));
 		} else {
-			setActiveItems(initialItems);
+			setActiveItems(allUserItems);
 		}
 	}
 
@@ -152,13 +165,13 @@ export default function App() {
 			key,
 		};
 
-		const existingIndex = activeItems.findIndex((i) => i.key === key);
+		const existingIndex = allUserItems.findIndex((i) => i.key === key);
 		if (existingIndex !== -1 && key !== 'generic') {
-			const updated = [...activeItems];
+			const updated = [...allUserItems];
 			updated[existingIndex] = newItem;
-			setActiveItems(updated);
+			setAllUserItems(updated);
 		} else {
-			setActiveItems([...activeItems, newItem]);
+			setAllUserItems([...allUserItems, newItem]);
 		}
 
 		setInputUrl('');
@@ -166,7 +179,7 @@ export default function App() {
 	}
 
 	function handleRemoveItem(key: PlatformItem['key']) {
-		setActiveItems(activeItems.filter((i) => i.key !== key));
+		setAllUserItems(allUserItems.filter((i) => i.key !== key));
 	}
 
 	// Single App Wrapper Landing Page View (Pristine Onboarding)
@@ -224,7 +237,8 @@ export default function App() {
 				{isAdminMode && (
 					/* Admin Mode Controls */
 					<div className="flex items-center gap-2">
-						{activeItems.length > 0 && (
+						{/* Preset sort filter bar - strictly filters the user's OWN added links */}
+						{allUserItems.length > 0 && (
 							<div className="flex items-center gap-1.5 bg-stone-900/80 p-1 rounded-full border border-white/10 text-xs">
 								<button
 									onClick={() => applyPreset('all')}
@@ -287,6 +301,14 @@ export default function App() {
 						<p>
 							Welcome to your bio page! Click <strong className="text-stone-100 font-medium">+ Add Social</strong> in the header to add your first social media link and build your dock.
 						</p>
+					</div>
+				)}
+
+				{/* Empty State Banner for Brand New Users */}
+				{allUserItems.length === 0 && isAdminMode && (
+					<div className="mt-4 p-4 rounded-2xl bg-stone-900/60 border border-white/10 text-stone-400 text-xs flex flex-col gap-2">
+						<span className="text-stone-200 font-medium">Your Liquid Dock is empty</span>
+						<p>Click <strong className="text-white">+ Add Social</strong> in the top header to add your first social media link and build your dock.</p>
 					</div>
 				)}
 			</section>
@@ -359,11 +381,11 @@ export default function App() {
 						</form>
 
 						{/* Active Dock Platforms List with Remove Buttons */}
-						{activeItems.length > 0 && (
+						{allUserItems.length > 0 && (
 							<div className="border-t border-white/10 pt-3 mt-1 flex flex-col gap-2">
 								<span className="text-[11px] text-stone-500 font-medium">Active Dock Platforms:</span>
 								<div className="flex flex-wrap gap-1.5">
-									{activeItems.map((item) => (
+									{allUserItems.map((item) => (
 										<span
 											key={item.key}
 											className="text-xs px-2.5 py-1 rounded-full bg-white/5 border border-white/10 text-stone-300 flex items-center gap-1.5 capitalize"
