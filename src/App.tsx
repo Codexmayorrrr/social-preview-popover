@@ -69,6 +69,7 @@ function getUserHandleFromUrl(): string {
 export default function App() {
 	const [userHandle] = useState<string>(() => getUserHandleFromUrl());
 	const [claimInput, setClaimInput] = useState<string>('');
+	const [selectedRoleTemplate, setSelectedRoleTemplate] = useState<typeof ROLE_TEMPLATES[0]>(ROLE_TEMPLATES[0]);
 
 	const [isLandingPage] = useState<boolean>(() => {
 		if (typeof window !== 'undefined') {
@@ -194,10 +195,17 @@ export default function App() {
 		const cleaned = claimInput.trim().toLowerCase().replace(/[^a-z0-9_-]/g, '');
 		if (!cleaned) return;
 
-		// Initialize empty dock [] and default bio for new user handle
+		// Initialize empty dock [] and selected role template bio for new user handle
 		if (typeof window !== 'undefined') {
+			const initialBio: UserBioData = {
+				displayName: `@${cleaned}`,
+				role: selectedRoleTemplate.role,
+				location: 'London, UK',
+				workStyle: 'remotely',
+				specialties: selectedRoleTemplate.specialties,
+			};
 			localStorage.setItem(`dock_bio_items_${cleaned}`, JSON.stringify([]));
-			localStorage.setItem(`dock_bio_data_${cleaned}`, JSON.stringify({ ...defaultNewUserBio, displayName: `@${cleaned}` }));
+			localStorage.setItem(`dock_bio_data_${cleaned}`, JSON.stringify(initialBio));
 			window.location.href = `/@${cleaned}?admin=true`;
 		}
 	}
@@ -240,7 +248,7 @@ export default function App() {
 		});
 	}
 
-	// Single App Wrapper Landing Page View (Pristine Onboarding)
+	// Onboarding View with Role Selection (/join or ?join=true)
 	if (isLandingPage) {
 		return (
 			<main className="min-h-screen bg-stone-950 text-stone-100 flex flex-col items-center justify-between p-6 sm:p-12 font-sans antialiased relative">
@@ -257,7 +265,7 @@ export default function App() {
 						Create your interactive Apple Liquid Glass bio dock in under 30 seconds.
 					</p>
 
-					<form onSubmit={handleClaimHandle} className="flex flex-col sm:flex-row items-center gap-3 w-full max-w-md">
+					<form onSubmit={handleClaimHandle} className="flex flex-col gap-5 w-full max-w-md">
 						<div className="relative flex-1 w-full">
 							<span className="absolute left-3.5 top-3 text-xs text-stone-500 font-mono">
 								dock.bio/@
@@ -272,9 +280,30 @@ export default function App() {
 							/>
 						</div>
 
+						{/* Quick Role Template Selector for Onboarding */}
+						<div className="flex flex-col gap-2 text-left">
+							<span className="text-[11px] text-stone-500 font-medium uppercase tracking-wider text-center">Select Your Role Template</span>
+							<div className="flex flex-wrap justify-center gap-1.5">
+								{ROLE_TEMPLATES.map((t, idx) => (
+									<button
+										key={idx}
+										type="button"
+										onClick={() => setSelectedRoleTemplate(t)}
+										className={`text-xs px-3 py-1.5 rounded-full border transition-all ${
+											selectedRoleTemplate.role === t.role
+												? 'bg-white/20 text-white font-medium border-white/40 shadow-sm'
+												: 'bg-white/5 text-stone-400 border-white/10 hover:text-stone-200'
+										}`}
+									>
+										{t.label}
+									</button>
+								))}
+							</div>
+						</div>
+
 						<button
 							type="submit"
-							className="w-full sm:w-auto px-6 py-3 rounded-xl bg-stone-100 hover:bg-white text-stone-900 font-semibold text-xs transition-colors shrink-0 shadow-lg"
+							className="w-full py-3.5 rounded-xl bg-stone-100 hover:bg-white text-stone-900 font-semibold text-xs transition-colors shadow-lg mt-1"
 						>
 							Claim & Launch →
 						</button>
