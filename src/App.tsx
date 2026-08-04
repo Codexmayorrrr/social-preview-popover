@@ -173,18 +173,12 @@ export default function App() {
 		setActiveItems(activeItems.filter((i) => i.key !== key));
 	}
 
-	// Single App Wrapper Landing Page View (Zero dock rendered on onboarding)
+	// Single App Wrapper Landing Page View (Pristine Onboarding)
 	if (isLandingPage) {
 		return (
 			<main className="min-h-screen bg-stone-950 text-stone-100 flex flex-col items-center justify-between p-6 sm:p-12 font-sans antialiased relative">
 				<header className="w-full max-w-xl flex items-center justify-between z-20">
 					<span className="text-xs font-serif italic text-stone-500 tracking-wider">dock.bio</span>
-					<a
-						href="/?admin=true"
-						className="text-xs text-stone-400 hover:text-white transition-colors"
-					>
-						Admin Studio
-					</a>
 				</header>
 
 				<section className="my-auto py-16 flex flex-col gap-8 max-w-xl text-center items-center w-full z-10">
