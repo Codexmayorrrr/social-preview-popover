@@ -32,7 +32,7 @@ function getUserHandleFromUrl(): string {
 }
 
 export default function App() {
-	const [userHandle, setUserHandle] = useState<string>('mayowa');
+	const [userHandle] = useState<string>(() => getUserHandleFromUrl());
 	const [claimInput, setClaimInput] = useState<string>('');
 
 	const [isLandingPage] = useState<boolean>(() => {
@@ -51,10 +51,6 @@ export default function App() {
 		return false;
 	});
 
-	useEffect(() => {
-		setUserHandle(getUserHandleFromUrl());
-	}, []);
-
 	const [activeItems, setActiveItems] = useState<PlatformItem[]>(() => {
 		if (typeof window !== 'undefined') {
 			const saved = localStorage.getItem(`dock_bio_items_${userHandle}`);
@@ -66,7 +62,7 @@ export default function App() {
 				}
 			}
 		}
-		// Default demo handle "mayowa" gets initialItems, brand new user handles start with []
+		// Default demo handle "mayowa" gets initialItems, brand new user handles start with empty []
 		return userHandle === 'mayowa' ? initialItems : [];
 	});
 
@@ -136,7 +132,7 @@ export default function App() {
 		const cleaned = claimInput.trim().toLowerCase().replace(/[^a-z0-9_-]/g, '');
 		if (!cleaned) return;
 
-		// New user handles start with an empty dock []
+		// Initialize empty dock [] for newly claimed handles
 		if (typeof window !== 'undefined') {
 			localStorage.setItem(`dock_bio_items_${cleaned}`, JSON.stringify([]));
 			window.location.href = `/@${cleaned}?admin=true`;
@@ -228,32 +224,34 @@ export default function App() {
 				{isAdminMode && (
 					/* Admin Mode Controls */
 					<div className="flex items-center gap-2">
-						<div className="flex items-center gap-1.5 bg-stone-900/80 p-1 rounded-full border border-white/10 text-xs">
-							<button
-								onClick={() => applyPreset('all')}
-								className={`px-3 py-1 rounded-full transition-colors ${
-									activePreset === 'all' ? 'bg-white/15 text-white font-medium' : 'text-stone-400 hover:text-white'
-								}`}
-							>
-								All
-							</button>
-							<button
-								onClick={() => applyPreset('dev')}
-								className={`px-3 py-1 rounded-full transition-colors ${
-									activePreset === 'dev' ? 'bg-white/15 text-white font-medium' : 'text-stone-400 hover:text-white'
-								}`}
-							>
-								Dev
-							</button>
-							<button
-								onClick={() => applyPreset('creator')}
-								className={`px-3 py-1 rounded-full transition-colors ${
-									activePreset === 'creator' ? 'bg-white/15 text-white font-medium' : 'text-stone-400 hover:text-white'
-								}`}
-							>
-								Creator
-							</button>
-						</div>
+						{activeItems.length > 0 && (
+							<div className="flex items-center gap-1.5 bg-stone-900/80 p-1 rounded-full border border-white/10 text-xs">
+								<button
+									onClick={() => applyPreset('all')}
+									className={`px-3 py-1 rounded-full transition-colors ${
+										activePreset === 'all' ? 'bg-white/15 text-white font-medium' : 'text-stone-400 hover:text-white'
+									}`}
+								>
+									All
+								</button>
+								<button
+									onClick={() => applyPreset('dev')}
+									className={`px-3 py-1 rounded-full transition-colors ${
+										activePreset === 'dev' ? 'bg-white/15 text-white font-medium' : 'text-stone-400 hover:text-white'
+									}`}
+								>
+									Dev
+								</button>
+								<button
+									onClick={() => applyPreset('creator')}
+									className={`px-3 py-1 rounded-full transition-colors ${
+										activePreset === 'creator' ? 'bg-white/15 text-white font-medium' : 'text-stone-400 hover:text-white'
+									}`}
+								>
+									Creator
+								</button>
+							</div>
+						)}
 
 						<button
 							onClick={() => setIsAddModalOpen(true)}
@@ -268,27 +266,27 @@ export default function App() {
 			{/* Clean Minimal Hero Layout */}
 			<section className="my-auto py-16 flex flex-col gap-6 max-w-xl text-left w-full z-10">
 				<h1 className="font-serif text-3xl sm:text-4xl tracking-tight italic text-stone-100 capitalize">
-					{userHandle === 'mayowa' ? 'Mayowa Ali' : userHandle}
+					{userHandle === 'mayowa' ? 'Mayowa Ali' : `@${userHandle}`}
 				</h1>
 
-				<div className="text-stone-400 leading-relaxed text-sm sm:text-base flex flex-col gap-4">
-					<p>
-						I am a <strong className="text-stone-100 font-medium">Design Engineer</strong> based in{' '}
-						<strong className="text-stone-100 font-medium">Lagos, Nigeria</strong>, working{' '}
-						<strong className="text-stone-100 font-medium">remotely</strong>.
-					</p>
-					<p>
-						Specializing at the intersection of <strong className="text-stone-100 font-medium">UI engineering</strong>,{' '}
-						<strong className="text-stone-100 font-medium">micro-interactions</strong>, and{' '}
-						<strong className="text-stone-100 font-medium">motion physics</strong>.
-					</p>
-				</div>
-
-				{/* Empty State Banner for Brand New Users */}
-				{activeItems.length === 0 && isAdminMode && (
-					<div className="mt-4 p-4 rounded-2xl bg-stone-900/60 border border-white/10 text-stone-400 text-xs flex flex-col gap-2">
-						<span className="text-stone-200 font-medium">Your Liquid Dock is empty</span>
-						<p>Click <strong className="text-white">+ Add Social</strong> in the top header to add your first social media link and build your dock.</p>
+				{userHandle === 'mayowa' ? (
+					<div className="text-stone-400 leading-relaxed text-sm sm:text-base flex flex-col gap-4">
+						<p>
+							I am a <strong className="text-stone-100 font-medium">Design Engineer</strong> based in{' '}
+							<strong className="text-stone-100 font-medium">Lagos, Nigeria</strong>, working{' '}
+							<strong className="text-stone-100 font-medium">remotely</strong>.
+						</p>
+						<p>
+							Specializing at the intersection of <strong className="text-stone-100 font-medium">UI engineering</strong>,{' '}
+							<strong className="text-stone-100 font-medium">micro-interactions</strong>, and{' '}
+							<strong className="text-stone-100 font-medium">motion physics</strong>.
+						</p>
+					</div>
+				) : (
+					<div className="text-stone-400 leading-relaxed text-sm sm:text-base flex flex-col gap-4">
+						<p>
+							Welcome to your bio page! Click <strong className="text-stone-100 font-medium">+ Add Social</strong> in the header to add your first social media link and build your dock.
+						</p>
 					</div>
 				)}
 			</section>
