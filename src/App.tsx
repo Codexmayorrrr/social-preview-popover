@@ -66,7 +66,8 @@ export default function App() {
 				}
 			}
 		}
-		return initialItems;
+		// Default demo handle "mayowa" gets initialItems, brand new user handles start with []
+		return userHandle === 'mayowa' ? initialItems : [];
 	});
 
 	const [activePreset, setActivePreset] = useState<'all' | 'dev' | 'creator'>('all');
@@ -135,9 +136,9 @@ export default function App() {
 		const cleaned = claimInput.trim().toLowerCase().replace(/[^a-z0-9_-]/g, '');
 		if (!cleaned) return;
 
-		// Initialize default starter items for new handle inside single Vercel app wrapper
+		// New user handles start with an empty dock []
 		if (typeof window !== 'undefined') {
-			localStorage.setItem(`dock_bio_items_${cleaned}`, JSON.stringify(initialItems));
+			localStorage.setItem(`dock_bio_items_${cleaned}`, JSON.stringify([]));
 			window.location.href = `/@${cleaned}?admin=true`;
 		}
 	}
@@ -169,12 +170,10 @@ export default function App() {
 	}
 
 	function handleRemoveItem(key: PlatformItem['key']) {
-		if (activeItems.length > 1) {
-			setActiveItems(activeItems.filter((i) => i.key !== key));
-		}
+		setActiveItems(activeItems.filter((i) => i.key !== key));
 	}
 
-	// Single App Wrapper Landing Page View (Claim handle within the site app)
+	// Single App Wrapper Landing Page View (Zero dock rendered on onboarding)
 	if (isLandingPage) {
 		return (
 			<main className="min-h-screen bg-stone-950 text-stone-100 flex flex-col items-center justify-between p-6 sm:p-12 font-sans antialiased relative">
@@ -220,24 +219,6 @@ export default function App() {
 						</button>
 					</form>
 				</section>
-
-				<footer className="sticky bottom-8 z-40 pb-4">
-					<Contacts
-						items={initialItems}
-						contributions={contributions}
-						contributionsLabel={`${contributions.total} contributions in 2026`}
-						githubProfile={githubProfile || {}}
-						xProfile={xProfile || {}}
-						youtubeProfile={{
-							name: 'Mayowa Ali',
-							subscribers: '12.4K Subscribers',
-							bannerUrl: '/banner.jpg',
-							videoTitle: 'Building Liquid Glass Motion in React 19',
-							videoThumbnail: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=600&q=80',
-							videoUrl: 'https://youtube.com',
-						}}
-					/>
-				</footer>
 			</main>
 		);
 	}
@@ -251,7 +232,7 @@ export default function App() {
 				</span>
 
 				{isAdminMode && (
-					/* Admin Mode Controls (Dedicated to Admin Page) */
+					/* Admin Mode Controls */
 					<div className="flex items-center gap-2">
 						<div className="flex items-center gap-1.5 bg-stone-900/80 p-1 rounded-full border border-white/10 text-xs">
 							<button
@@ -308,26 +289,36 @@ export default function App() {
 						<strong className="text-stone-100 font-medium">motion physics</strong>.
 					</p>
 				</div>
+
+				{/* Empty State Banner for Brand New Users */}
+				{activeItems.length === 0 && isAdminMode && (
+					<div className="mt-4 p-4 rounded-2xl bg-stone-900/60 border border-white/10 text-stone-400 text-xs flex flex-col gap-2">
+						<span className="text-stone-200 font-medium">Your Liquid Dock is empty</span>
+						<p>Click <strong className="text-white">+ Add Social</strong> in the top header to add your first social media link and build your dock.</p>
+					</div>
+				)}
 			</section>
 
-			{/* Floating Contacts Dock */}
-			<footer className="sticky bottom-8 z-40 pb-4">
-				<Contacts
-					items={activeItems}
-					contributions={contributions}
-					contributionsLabel={`${contributions.total} contributions in 2026`}
-					githubProfile={githubProfile || {}}
-					xProfile={xProfile || {}}
-					youtubeProfile={{
-						name: 'Mayowa Ali',
-						subscribers: '12.4K Subscribers',
-						bannerUrl: '/banner.jpg',
-						videoTitle: 'Building Liquid Glass Motion in React 19',
-						videoThumbnail: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=600&q=80',
-						videoUrl: 'https://youtube.com',
-					}}
-				/>
-			</footer>
+			{/* Floating Contacts Dock - ONLY RENDERED WHEN USER HAS ADDED LINKS */}
+			{activeItems.length > 0 && (
+				<footer className="sticky bottom-8 z-40 pb-4">
+					<Contacts
+						items={activeItems}
+						contributions={contributions}
+						contributionsLabel={`${contributions.total} contributions in 2026`}
+						githubProfile={githubProfile || {}}
+						xProfile={xProfile || {}}
+						youtubeProfile={{
+							name: 'Mayowa Ali',
+							subscribers: '12.4K Subscribers',
+							bannerUrl: '/banner.jpg',
+							videoTitle: 'Building Liquid Glass Motion in React 19',
+							videoThumbnail: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=600&q=80',
+							videoUrl: 'https://youtube.com',
+						}}
+					/>
+				</footer>
+			)}
 
 			{/* Admin Mode: Add Social Link Modal */}
 			{isAdminMode && isAddModalOpen && (
@@ -376,27 +367,27 @@ export default function App() {
 						</form>
 
 						{/* Active Dock Platforms List with Remove Buttons */}
-						<div className="border-t border-white/10 pt-3 mt-1 flex flex-col gap-2">
-							<span className="text-[11px] text-stone-500 font-medium">Active Dock Platforms:</span>
-							<div className="flex flex-wrap gap-1.5">
-								{activeItems.map((item) => (
-									<span
-										key={item.key}
-										className="text-xs px-2.5 py-1 rounded-full bg-white/5 border border-white/10 text-stone-300 flex items-center gap-1.5 capitalize"
-									>
-										{item.key}
-										{activeItems.length > 1 && (
+						{activeItems.length > 0 && (
+							<div className="border-t border-white/10 pt-3 mt-1 flex flex-col gap-2">
+								<span className="text-[11px] text-stone-500 font-medium">Active Dock Platforms:</span>
+								<div className="flex flex-wrap gap-1.5">
+									{activeItems.map((item) => (
+										<span
+											key={item.key}
+											className="text-xs px-2.5 py-1 rounded-full bg-white/5 border border-white/10 text-stone-300 flex items-center gap-1.5 capitalize"
+										>
+											{item.key}
 											<button
 												onClick={() => handleRemoveItem(item.key)}
 												className="text-stone-500 hover:text-red-400 font-bold text-xs pl-1"
 											>
 												×
 											</button>
-										)}
-									</span>
-								))}
+										</span>
+									))}
+								</div>
 							</div>
-						</div>
+						)}
 					</div>
 				</div>
 			)}
