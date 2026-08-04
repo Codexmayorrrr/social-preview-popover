@@ -45,10 +45,11 @@ export async function getProfileByHandle(handle: string) {
  * Universal Google 1-Click Sign-In
  */
 export async function signInWithGoogle() {
+	const redirectTo = typeof window !== 'undefined' ? window.location.href : 'http://localhost:5050';
 	const { data, error } = await supabase.auth.signInWithOAuth({
 		provider: 'google',
 		options: {
-			redirectTo: `${window.location.origin}/auth/callback`,
+			redirectTo,
 		},
 	});
 	if (error) throw error;
@@ -56,26 +57,75 @@ export async function signInWithGoogle() {
 }
 
 /**
- * Bulk save or migrate local draft links to Supabase
+ * Sign out current user
  */
-export async function syncDraftLinksToSupabase(userId: string, items: any[]) {
+export async function signOutUser() {
+	const { error } = await supabase.auth.signOut();
+	if (error) console.error('Error signing out:', error);
+}
+
+/**
+ * Get active Supabase session
+ */
+export async function getCurrentUser() {
+	const { data } = await supabase.auth.getUser();
+	return data.user;
+}
+
+/**
+ * Sync or Create User Profile and Bulk Save Links in Supabase
+ */
+export async function syncUserAndLinksToDatabase(
+	authUser: any,
+	handle: string,
+	bioData: { displayName: string; role: string; location: string; workStyle: string; specialties: string },
+	items: any[]
+) {
+	if (!authUser) return null;
+
 	try {
-		const formatted = items.map((item, index) => ({
-			user_id: userId,
-			platform_key: item.key,
-			url: item.url,
-			position: index,
-			is_active: true,
-		}));
+		// 1. Upsert User Record
+		const userPayload = {
+			google_id: authUser.id,
+			email: authUser.email,
+			handle: handle.toLowerCase(),
+			display_name: bioData.displayName || authUser.user_metadata?.full_name || `@${handle}`,
+			bio: `${bioData.role || ''} | ${bioData.location || ''} | ${bioData.specialties || ''}`,
+			avatar_url: authUser.user_metadata?.avatar_url || '',
+			updated_at: new Date().toISOString(),
+		};
 
-		const { data, error } = await supabase
-			.from('links')
-			.upsert(formatted, { onConflict: 'id' });
+		const { data: dbUser, error: userErr } = await supabase
+			.from('users')
+			.upsert(userPayload, { onConflict: 'google_id' })
+			.select()
+			.single();
 
-		if (error) throw error;
-		return data;
+		if (userErr) {
+			console.error('Error upserting user:', userErr);
+			return null;
+		}
+
+		// 2. Bulk Insert/Update Links
+		if (dbUser && items.length > 0) {
+			const formattedLinks = items.map((item, index) => ({
+				user_id: dbUser.id,
+				platform_key: item.key,
+				url: item.url,
+				position: index,
+				is_active: true,
+			}));
+
+			const { error: linksErr } = await supabase
+				.from('links')
+				.upsert(formattedLinks, { onConflict: 'id' });
+
+			if (linksErr) console.error('Error upserting links:', linksErr);
+		}
+
+		return dbUser;
 	} catch (e) {
-		console.error('Error syncing links to Supabase:', e);
+		console.error('Error in syncUserAndLinksToDatabase:', e);
 		return null;
 	}
 }
