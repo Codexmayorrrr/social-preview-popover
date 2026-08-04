@@ -24,7 +24,7 @@ function getUserHandleFromUrl(): string {
 
 	// Subpath handle detection (e.g. "/@mayowa" or "/mayowa")
 	const pathParts = window.location.pathname.split('/').filter(Boolean);
-	if (pathParts.length > 0 && pathParts[0] !== 'admin') {
+	if (pathParts.length > 0 && !['admin', 'join'].includes(pathParts[0])) {
 		return pathParts[0].replace('@', '');
 	}
 
@@ -33,6 +33,15 @@ function getUserHandleFromUrl(): string {
 
 export default function App() {
 	const [userHandle, setUserHandle] = useState<string>('mayowa');
+	const [claimInput, setClaimInput] = useState<string>('');
+
+	const [isLandingPage, setIsLandingPage] = useState<boolean>(() => {
+		if (typeof window !== 'undefined') {
+			const params = new URLSearchParams(window.location.search);
+			return params.get('join') === 'true' || window.location.pathname === '/join';
+		}
+		return false;
+	});
 
 	const [isAdminMode] = useState<boolean>(() => {
 		if (typeof window !== 'undefined') {
@@ -121,6 +130,18 @@ export default function App() {
 		}
 	}
 
+	function handleClaimSubdomain(e: React.FormEvent) {
+		e.preventDefault();
+		const cleaned = claimInput.trim().toLowerCase().replace(/[^a-z0-9_-]/g, '');
+		if (!cleaned) return;
+
+		// Initialize default starter items for new claimed handle
+		if (typeof window !== 'undefined') {
+			localStorage.setItem(`dock_bio_items_${cleaned}`, JSON.stringify(initialItems));
+			window.location.href = `/@${cleaned}?admin=true`;
+		}
+	}
+
 	function handleAddLink(e: React.FormEvent) {
 		e.preventDefault();
 		if (!inputUrl.trim()) return;
@@ -151,6 +172,74 @@ export default function App() {
 		if (activeItems.length > 1) {
 			setActiveItems(activeItems.filter((i) => i.key !== key));
 		}
+	}
+
+	// Landing Page View (for claiming subdomains at /join or ?join=true)
+	if (isLandingPage) {
+		return (
+			<main className="min-h-screen bg-stone-950 text-stone-100 flex flex-col items-center justify-between p-6 sm:p-12 font-sans antialiased relative">
+				<header className="w-full max-w-xl flex items-center justify-between z-20">
+					<span className="text-xs font-serif italic text-stone-500 tracking-wider">dock.bio</span>
+					<a
+						href="/?admin=true"
+						className="text-xs text-stone-400 hover:text-white transition-colors"
+					>
+						Admin Studio
+					</a>
+				</header>
+
+				<section className="my-auto py-16 flex flex-col gap-8 max-w-xl text-center items-center w-full z-10">
+					<h1 className="font-serif text-4xl sm:text-5xl tracking-tight italic text-stone-100">
+						Claim Your Vercel Subdomain
+					</h1>
+
+					<p className="text-stone-400 text-sm sm:text-base max-w-md leading-relaxed">
+						Create your interactive Apple Liquid Glass bio dock in under 30 seconds.
+					</p>
+
+					<form onSubmit={handleClaimSubdomain} className="flex flex-col sm:flex-row items-center gap-3 w-full max-w-md">
+						<div className="relative flex-1 w-full">
+							<input
+								type="text"
+								placeholder="yourname"
+								value={claimInput}
+								onChange={(e) => setClaimInput(e.target.value)}
+								className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/15 text-sm text-stone-100 placeholder-stone-600 focus:outline-none focus:border-white/40 transition-colors pr-24"
+								autoFocus
+							/>
+							<span className="absolute right-3 top-3 text-xs text-stone-500 font-mono">
+								.vercel.app
+							</span>
+						</div>
+
+						<button
+							type="submit"
+							className="w-full sm:w-auto px-6 py-3 rounded-xl bg-stone-100 hover:bg-white text-stone-900 font-semibold text-xs transition-colors shrink-0 shadow-lg"
+						>
+							Claim & Launch →
+						</button>
+					</form>
+				</section>
+
+				<footer className="sticky bottom-8 z-40 pb-4">
+					<Contacts
+						items={initialItems}
+						contributions={contributions}
+						contributionsLabel={`${contributions.total} contributions in 2026`}
+						githubProfile={githubProfile || {}}
+						xProfile={xProfile || {}}
+						youtubeProfile={{
+							name: 'Mayowa Ali',
+							subscribers: '12.4K Subscribers',
+							bannerUrl: '/banner.jpg',
+							videoTitle: 'Building Liquid Glass Motion in React 19',
+							videoThumbnail: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=600&q=80',
+							videoUrl: 'https://youtube.com',
+						}}
+					/>
+				</footer>
+			</main>
+		);
 	}
 
 	return (
