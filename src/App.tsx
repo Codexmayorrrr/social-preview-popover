@@ -4,6 +4,14 @@ import { CONTACT } from './config';
 import { getGithubProfile, getXProfile } from './utils/social-api';
 import { getGithubContributions, type Contributions } from './utils/github-contributions';
 
+export interface UserBioData {
+	displayName: string;
+	role: string;
+	location: string;
+	workStyle: string;
+	specialties: string;
+}
+
 const initialItems: PlatformItem[] = [
 	{ label: 'GitHub', url: CONTACT.github, key: 'github' },
 	{ label: 'LinkedIn', url: CONTACT.linkedin, key: 'linkedin' },
@@ -14,6 +22,30 @@ const initialItems: PlatformItem[] = [
 
 const DEV_KEYS = ['github', 'x', 'linkedin', 'malt', 'medium', 'figma', 'dribbble', 'behance', 'producthunt', 'generic'];
 const CREATOR_KEYS = ['youtube', 'spotify', 'x', 'instagram', 'tiktok', 'twitch', 'substack', 'threads', 'medium', 'generic'];
+
+const defaultMayowaBio: UserBioData = {
+	displayName: 'Mayowa Ali',
+	role: 'Design Engineer',
+	location: 'Lagos, Nigeria',
+	workStyle: 'remotely',
+	specialties: 'UI engineering, micro-interactions, and motion physics',
+};
+
+const defaultNewUserBio: UserBioData = {
+	displayName: '',
+	role: 'Creator & Builder',
+	location: 'London, UK',
+	workStyle: 'remotely',
+	specialties: 'content creation, UI design, and digital products',
+};
+
+const ROLE_TEMPLATES = [
+	{ label: '💻 Design Engineer', role: 'Design Engineer', specialties: 'UI engineering, micro-interactions, and motion physics' },
+	{ label: '🎥 Tech Creator', role: 'Tech Creator & YouTuber', specialties: 'video essays, gadget reviews, and motion design' },
+	{ label: '🎨 UI/UX Designer', role: 'UI/UX Designer', specialties: 'design systems, product design, and web interfaces' },
+	{ label: '✍️ Substack Writer', role: 'Substack Writer', specialties: 'tech analysis, newsletters, and long-form essays' },
+	{ label: '🎙️ Podcast Host', role: 'Podcast Host', specialties: 'interviews, tech news, and audio storytelling' },
+];
 
 function getUserHandleFromUrl(): string {
 	if (typeof window === 'undefined') return 'mayowa';
@@ -54,6 +86,23 @@ export default function App() {
 		return false;
 	});
 
+	// Bio Data State per User Handle
+	const [bioData, setBioData] = useState<UserBioData>(() => {
+		if (typeof window !== 'undefined') {
+			const saved = localStorage.getItem(`dock_bio_data_${userHandle}`);
+			if (saved) {
+				try {
+					return JSON.parse(saved);
+				} catch (e) {
+					console.error('Failed to parse bio data:', e);
+				}
+			}
+		}
+		return userHandle === 'mayowa' ? defaultMayowaBio : { ...defaultNewUserBio, displayName: `@${userHandle}` };
+	});
+
+	const [isBioModalOpen, setIsBioModalOpen] = useState(false);
+
 	// All links owned by this specific user
 	const [allUserItems, setAllUserItems] = useState<PlatformItem[]>(() => {
 		if (typeof window !== 'undefined') {
@@ -86,12 +135,12 @@ export default function App() {
 	const [githubProfile, setGithubProfile] = useState<any>(null);
 	const [xProfile, setXProfile] = useState<any>(null);
 
-	// Sync active items with allUserItems when allUserItems changes
+	// Persist bioData & activeItems per user handle
 	useEffect(() => {
 		if (typeof window !== 'undefined') {
+			localStorage.setItem(`dock_bio_data_${userHandle}`, JSON.stringify(bioData));
 			localStorage.setItem(`dock_bio_items_${userHandle}`, JSON.stringify(allUserItems));
 		}
-		// Re-apply current preset on updated user items
 		if (activePreset === 'dev') {
 			setActiveItems(allUserItems.filter((i) => DEV_KEYS.includes(i.key)));
 		} else if (activePreset === 'creator') {
@@ -99,7 +148,7 @@ export default function App() {
 		} else {
 			setActiveItems(allUserItems);
 		}
-	}, [allUserItems, userHandle, activePreset]);
+	}, [allUserItems, bioData, userHandle, activePreset]);
 
 	useEffect(() => {
 		async function loadData() {
@@ -145,9 +194,10 @@ export default function App() {
 		const cleaned = claimInput.trim().toLowerCase().replace(/[^a-z0-9_-]/g, '');
 		if (!cleaned) return;
 
-		// Initialize empty dock [] for newly claimed handles
+		// Initialize empty dock [] and default bio for new user handle
 		if (typeof window !== 'undefined') {
 			localStorage.setItem(`dock_bio_items_${cleaned}`, JSON.stringify([]));
+			localStorage.setItem(`dock_bio_data_${cleaned}`, JSON.stringify({ ...defaultNewUserBio, displayName: `@${cleaned}` }));
 			window.location.href = `/@${cleaned}?admin=true`;
 		}
 	}
@@ -180,6 +230,14 @@ export default function App() {
 
 	function handleRemoveItem(key: PlatformItem['key']) {
 		setAllUserItems(allUserItems.filter((i) => i.key !== key));
+	}
+
+	function applyRoleTemplate(template: typeof ROLE_TEMPLATES[0]) {
+		setBioData({
+			...bioData,
+			role: template.role,
+			specialties: template.specialties,
+		});
 	}
 
 	// Single App Wrapper Landing Page View (Pristine Onboarding)
@@ -237,7 +295,7 @@ export default function App() {
 				{isAdminMode && (
 					/* Admin Mode Controls */
 					<div className="flex items-center gap-2">
-						{/* Preset sort filter bar - strictly filters the user's OWN added links */}
+						{/* Preset sort filter bar */}
 						{allUserItems.length > 0 && (
 							<div className="flex items-center gap-1.5 bg-stone-900/80 p-1 rounded-full border border-white/10 text-xs">
 								<button
@@ -268,8 +326,15 @@ export default function App() {
 						)}
 
 						<button
-							onClick={() => setIsAddModalOpen(true)}
+							onClick={() => setIsBioModalOpen(true)}
 							className="px-3.5 py-1.5 rounded-full bg-white/10 hover:bg-white/20 transition-all text-xs font-medium text-white border border-white/15 flex items-center gap-1 shadow-md"
+						>
+							<span>✏️</span> Edit Bio
+						</button>
+
+						<button
+							onClick={() => setIsAddModalOpen(true)}
+							className="px-3.5 py-1.5 rounded-full bg-stone-100 text-stone-900 hover:bg-white transition-all text-xs font-medium flex items-center gap-1 shadow-md"
 						>
 							<span>+</span> Add Social
 						</button>
@@ -277,32 +342,25 @@ export default function App() {
 				)}
 			</header>
 
-			{/* Clean Minimal Hero Layout */}
+			{/* Clean Minimal Hero Layout with Bold Keyword Formatting */}
 			<section className="my-auto py-16 flex flex-col gap-6 max-w-xl text-left w-full z-10">
-				<h1 className="font-serif text-3xl sm:text-4xl tracking-tight italic text-stone-100 capitalize">
-					{userHandle === 'mayowa' ? 'Mayowa Ali' : `@${userHandle}`}
-				</h1>
+				<div className="flex items-center justify-between">
+					<h1 className="font-serif text-3xl sm:text-4xl tracking-tight italic text-stone-100 capitalize">
+						{bioData.displayName || `@${userHandle}`}
+					</h1>
+				</div>
 
-				{userHandle === 'mayowa' ? (
-					<div className="text-stone-400 leading-relaxed text-sm sm:text-base flex flex-col gap-4">
-						<p>
-							I am a <strong className="text-stone-100 font-medium">Design Engineer</strong> based in{' '}
-							<strong className="text-stone-100 font-medium">Lagos, Nigeria</strong>, working{' '}
-							<strong className="text-stone-100 font-medium">remotely</strong>.
-						</p>
-						<p>
-							Specializing at the intersection of <strong className="text-stone-100 font-medium">UI engineering</strong>,{' '}
-							<strong className="text-stone-100 font-medium">micro-interactions</strong>, and{' '}
-							<strong className="text-stone-100 font-medium">motion physics</strong>.
-						</p>
-					</div>
-				) : (
-					<div className="text-stone-400 leading-relaxed text-sm sm:text-base flex flex-col gap-4">
-						<p>
-							Welcome to your bio page! Click <strong className="text-stone-100 font-medium">+ Add Social</strong> in the header to add your first social media link and build your dock.
-						</p>
-					</div>
-				)}
+				<div className="text-stone-400 leading-relaxed text-sm sm:text-base flex flex-col gap-4">
+					<p>
+						I am a <strong className="text-stone-100 font-medium">{bioData.role || 'Creator'}</strong> based in{' '}
+						<strong className="text-stone-100 font-medium">{bioData.location || 'Remote'}</strong>, working{' '}
+						<strong className="text-stone-100 font-medium">{bioData.workStyle || 'remotely'}</strong>.
+					</p>
+					<p>
+						Specializing at the intersection of{' '}
+						<strong className="text-stone-100 font-medium">{bioData.specialties || 'digital products and content creation'}</strong>.
+					</p>
+				</div>
 
 				{/* Empty State Banner for Brand New Users */}
 				{allUserItems.length === 0 && isAdminMode && (
@@ -332,6 +390,102 @@ export default function App() {
 						}}
 					/>
 				</footer>
+			)}
+
+			{/* Interactive Sentence Builder Bio Modal */}
+			{isAdminMode && isBioModalOpen && (
+				<div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-md flex items-center justify-center p-4">
+					<div className="bg-stone-900/90 border border-white/15 rounded-2xl p-6 w-full max-w-md shadow-2xl flex flex-col gap-5 relative">
+						<div className="flex items-center justify-between">
+							<h3 className="font-serif italic text-base text-stone-100">Interactive Bio Builder</h3>
+							<button
+								onClick={() => setIsBioModalOpen(false)}
+								className="text-stone-500 hover:text-stone-200 text-sm p-1"
+							>
+								✕
+							</button>
+						</div>
+
+						{/* Option 2: Quick Template Role Chips */}
+						<div className="flex flex-col gap-2">
+							<span className="text-[11px] text-stone-500 font-medium uppercase tracking-wider">Quick Role Templates</span>
+							<div className="flex flex-wrap gap-1.5">
+								{ROLE_TEMPLATES.map((t, idx) => (
+									<button
+										key={idx}
+										onClick={() => applyRoleTemplate(t)}
+										className="text-xs px-2.5 py-1 rounded-full bg-white/5 hover:bg-white/15 border border-white/10 text-stone-300 transition-colors"
+									>
+										{t.label}
+									</button>
+								))}
+							</div>
+						</div>
+
+						{/* Option 1: 2-Field Micro Inputs */}
+						<div className="flex flex-col gap-3 pt-2 border-t border-white/10">
+							<span className="text-[11px] text-stone-500 font-medium uppercase tracking-wider">Customize Bio Details</span>
+
+							<div className="flex flex-col gap-1">
+								<label className="text-[11px] text-stone-400">Display Name</label>
+								<input
+									type="text"
+									value={bioData.displayName}
+									onChange={(e) => setBioData({ ...bioData, displayName: e.target.value })}
+									className="px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-xs text-stone-100 focus:outline-none focus:border-white/30"
+								/>
+							</div>
+
+							<div className="grid grid-cols-2 gap-2">
+								<div className="flex flex-col gap-1">
+									<label className="text-[11px] text-stone-400">Role / Title</label>
+									<input
+										type="text"
+										value={bioData.role}
+										onChange={(e) => setBioData({ ...bioData, role: e.target.value })}
+										className="px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-xs text-stone-100 focus:outline-none focus:border-white/30"
+									/>
+								</div>
+								<div className="flex flex-col gap-1">
+									<label className="text-[11px] text-stone-400">Location</label>
+									<input
+										type="text"
+										value={bioData.location}
+										onChange={(e) => setBioData({ ...bioData, location: e.target.value })}
+										className="px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-xs text-stone-100 focus:outline-none focus:border-white/30"
+									/>
+								</div>
+							</div>
+
+							<div className="flex flex-col gap-1">
+								<label className="text-[11px] text-stone-400">Specialties / Focus Areas</label>
+								<input
+									type="text"
+									value={bioData.specialties}
+									onChange={(e) => setBioData({ ...bioData, specialties: e.target.value })}
+									className="px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-xs text-stone-100 focus:outline-none focus:border-white/30"
+								/>
+							</div>
+						</div>
+
+						{/* Live Interactive Sentence Preview */}
+						<div className="bg-white/5 p-3.5 rounded-xl border border-white/10 flex flex-col gap-1 text-xs">
+							<span className="text-[10px] text-stone-500 uppercase tracking-wider font-semibold">Live Preview</span>
+							<p className="text-stone-300 leading-relaxed">
+								I am a <strong className="text-white">{bioData.role || 'Role'}</strong> based in{' '}
+								<strong className="text-white">{bioData.location || 'Location'}</strong>, working{' '}
+								<strong className="text-white">{bioData.workStyle || 'remotely'}</strong>.
+							</p>
+						</div>
+
+						<button
+							onClick={() => setIsBioModalOpen(false)}
+							className="w-full py-2.5 rounded-xl bg-stone-100 text-stone-900 font-medium text-xs hover:bg-white transition-colors mt-1"
+						>
+							Save Bio
+						</button>
+					</div>
+				</div>
 			)}
 
 			{/* Admin Mode: Add Social Link Modal */}
