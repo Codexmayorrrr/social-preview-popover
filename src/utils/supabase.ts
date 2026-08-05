@@ -21,7 +21,7 @@ export async function getProfileByHandle(handle: string) {
 			.from('users')
 			.select('*')
 			.eq('handle', handle.toLowerCase())
-			.single();
+			.maybeSingle();
 
 		if (userError || !user) return null;
 
@@ -42,19 +42,22 @@ export async function getProfileByHandle(handle: string) {
 }
 
 /**
- * Fetch user profile by google_id
+ * Fetch user profile by Auth User (matching google_id or email)
  */
-export async function getProfileByGoogleId(googleId: string) {
+export async function getProfileByAuthUser(authUser: any) {
+	if (!authUser) return null;
+
 	try {
 		const { data: user, error } = await supabase
 			.from('users')
 			.select('*')
-			.eq('google_id', googleId)
-			.single();
+			.or(`google_id.eq.${authUser.id},email.eq.${authUser.email}`)
+			.maybeSingle();
+
 		if (error || !user) return null;
 		return user;
 	} catch (e) {
-		console.error('Error fetching profile by google_id:', e);
+		console.error('Error fetching profile by auth user:', e);
 		return null;
 	}
 }
@@ -99,7 +102,7 @@ export async function syncUserAndLinksToDatabase(
 	bioData: { displayName: string; role: string; location: string; workStyle: string; specialties: string },
 	items: any[]
 ) {
-	if (!authUser) return null;
+	if (!authUser || !handle) return null;
 
 	try {
 		// 1. Upsert User Record

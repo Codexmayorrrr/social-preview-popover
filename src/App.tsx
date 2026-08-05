@@ -6,7 +6,7 @@ import { getGithubContributions, type Contributions } from './utils/github-contr
 import {
 	supabase,
 	getProfileByHandle,
-	getProfileByGoogleId,
+	getProfileByAuthUser,
 	getCurrentUser,
 	signInWithGoogle,
 	syncUserAndLinksToDatabase,
@@ -93,7 +93,7 @@ export default function App() {
 	const [isLandingPage] = useState<boolean>(() => {
 		if (typeof window !== 'undefined') {
 			const params = new URLSearchParams(window.location.search);
-			return params.get('join') === 'true' || window.location.pathname === '/join';
+			return params.get('join') === 'true' || window.location.pathname === '/join' || window.location.pathname === '/';
 		}
 		return false;
 	});
@@ -191,8 +191,14 @@ export default function App() {
 		getCurrentUser().then(async (user) => {
 			setAuthUser(user);
 			if (user && isLandingPage) {
+				const pendingHandle = localStorage.getItem('pending_claim_handle');
+				if (pendingHandle) {
+					window.location.href = `/@${pendingHandle}?admin=true`;
+					return;
+				}
+
 				// Option 1: Auto-session redirect if user already has a claimed handle
-				const profile = await getProfileByGoogleId(user.id);
+				const profile = await getProfileByAuthUser(user);
 				if (profile && profile.handle) {
 					window.location.href = `/@${profile.handle}?admin=true`;
 				}
@@ -212,10 +218,10 @@ export default function App() {
 					window.location.href = `/@${pendingHandle}?admin=true`;
 				} else {
 					// Option 2: Returning user sign in lookup
-					const profile = await getProfileByGoogleId(currentUser.id);
+					const profile = await getProfileByAuthUser(currentUser);
 					if (profile && profile.handle) {
 						window.location.href = `/@${profile.handle}?admin=true`;
-					} else {
+					} else if (userHandle && userHandle !== 'mayowa') {
 						await syncUserAndLinksToDatabase(currentUser, userHandle, bioData, allUserItems);
 					}
 				}
