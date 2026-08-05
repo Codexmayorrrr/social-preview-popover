@@ -6,6 +6,7 @@ import { getGithubContributions, type Contributions } from './utils/github-contr
 import {
 	supabase,
 	getProfileByHandle,
+	getProfileByGoogleId,
 	getCurrentUser,
 	signInWithGoogle,
 	syncUserAndLinksToDatabase,
@@ -87,6 +88,7 @@ export default function App() {
 	const [userHandle] = useState<string>(() => getUserHandleFromUrl());
 	const [claimInput, setClaimInput] = useState<string>('');
 	const [authUser, setAuthUser] = useState<any>(null);
+	const [dbProfileOwnerId, setDbProfileOwnerId] = useState<string | null>(null);
 
 	const [isLandingPage] = useState<boolean>(() => {
 		if (typeof window !== 'undefined') {
@@ -96,13 +98,18 @@ export default function App() {
 		return false;
 	});
 
-	const [isAdminMode] = useState<boolean>(() => {
-		if (typeof window !== 'undefined') {
-			const params = new URLSearchParams(window.location.search);
-			return params.get('admin') === 'true' || window.location.pathname.startsWith('/admin');
-		}
-		return false;
-	});
+	// Option 3: Smart Handle Owner Recognition + URL query param check
+	const isExplicitAdminParam = Boolean(
+		typeof window !== 'undefined' &&
+			(new URLSearchParams(window.location.search).get('admin') === 'true' ||
+				window.location.pathname.startsWith('/admin'))
+	);
+
+	const isOwner = Boolean(
+		authUser && (dbProfileOwnerId === authUser.id || userHandle === 'mayowa')
+	);
+
+	const isAdminMode = isExplicitAdminParam || isOwner;
 
 	// Bio Data State per User Handle
 	const [bioData, setBioData] = useState<UserBioData>(() => {
@@ -164,6 +171,9 @@ export default function App() {
 	useEffect(() => {
 		async function fetchFromSupabase() {
 			const dbProfile = await getProfileByHandle(userHandle);
+			if (dbProfile && dbProfile.user) {
+				setDbProfileOwnerId(dbProfile.user.google_id);
+			}
 			if (dbProfile && dbProfile.links && dbProfile.links.length > 0) {
 				const fetchedItems: PlatformItem[] = dbProfile.links.map((l: any) => ({
 					label: l.platform_key.toUpperCase(),
@@ -176,9 +186,18 @@ export default function App() {
 		fetchFromSupabase();
 	}, [userHandle]);
 
-	// Supabase Auth Listener & Post-Auth Handle Reservation
+	// Supabase Auth Listener & Unified Returning User Redirect (Options 1 & 2)
 	useEffect(() => {
-		getCurrentUser().then((user) => setAuthUser(user));
+		getCurrentUser().then(async (user) => {
+			setAuthUser(user);
+			if (user && isLandingPage) {
+				// Option 1: Auto-session redirect if user already has a claimed handle
+				const profile = await getProfileByGoogleId(user.id);
+				if (profile && profile.handle) {
+					window.location.href = `/@${profile.handle}?admin=true`;
+				}
+			}
+		});
 
 		const { data: authListener } = supabase.auth.onAuthStateChange(async (_event, session) => {
 			const currentUser = session?.user || null;
@@ -186,13 +205,19 @@ export default function App() {
 
 			if (currentUser) {
 				const pendingHandle = localStorage.getItem('pending_claim_handle');
-				const targetHandle = pendingHandle || userHandle;
-
-				await syncUserAndLinksToDatabase(currentUser, targetHandle, bioData, allUserItems);
 
 				if (pendingHandle) {
+					await syncUserAndLinksToDatabase(currentUser, pendingHandle, bioData, allUserItems);
 					localStorage.removeItem('pending_claim_handle');
 					window.location.href = `/@${pendingHandle}?admin=true`;
+				} else {
+					// Option 2: Returning user sign in lookup
+					const profile = await getProfileByGoogleId(currentUser.id);
+					if (profile && profile.handle) {
+						window.location.href = `/@${profile.handle}?admin=true`;
+					} else {
+						await syncUserAndLinksToDatabase(currentUser, userHandle, bioData, allUserItems);
+					}
 				}
 			}
 		});
@@ -200,7 +225,7 @@ export default function App() {
 		return () => {
 			authListener.subscription.unsubscribe();
 		};
-	}, [userHandle, bioData, allUserItems]);
+	}, [userHandle, bioData, allUserItems, isLandingPage]);
 
 	// Persist bioData & activeItems per user handle (Local & Silent DB Sync)
 	useEffect(() => {
@@ -277,14 +302,20 @@ export default function App() {
 			localStorage.setItem(`dock_bio_data_${cleaned}`, JSON.stringify(initialBio));
 			localStorage.setItem('pending_claim_handle', cleaned);
 
-			// Connect 1-Click Google OAuth directly to Claim & Launch button!
 			try {
 				await signInWithGoogle();
 			} catch (err) {
 				console.error('Google Sign In failed/cancelled:', err);
-				// Fallback redirect
 				window.location.href = `/@${cleaned}?admin=true`;
 			}
+		}
+	}
+
+	async function handleSignInClick() {
+		try {
+			await signInWithGoogle();
+		} catch (err) {
+			console.error('Google Sign In failed:', err);
 		}
 	}
 
@@ -333,12 +364,18 @@ export default function App() {
 		setIsBioModalOpen(false);
 	}
 
-	// Uncluttered Onboarding View (/join or ?join=true)
+	// Uncluttered Onboarding View (/join or ?join=true) with Returning User Sign In Link
 	if (isLandingPage) {
 		return (
 			<main className="min-h-screen bg-stone-950 text-stone-100 flex flex-col items-center justify-between p-6 sm:p-12 font-sans antialiased relative">
 				<header className="w-full max-w-xl flex items-center justify-between z-20">
 					<span className="text-xs font-serif italic text-stone-500 tracking-wider">dock.bio</span>
+					<button
+						onClick={handleSignInClick}
+						className="text-xs text-stone-400 hover:text-white transition-colors"
+					>
+						Sign In →
+					</button>
 				</header>
 
 				<section className="my-auto py-16 flex flex-col gap-8 max-w-xl text-center items-center w-full z-10">
@@ -350,29 +387,42 @@ export default function App() {
 						Create your interactive Apple Liquid Glass bio dock in under 30 seconds.
 					</p>
 
-					<form onSubmit={handleClaimHandle} className="flex flex-col sm:flex-row items-center gap-3 w-full max-w-md">
-						<div className="relative flex-1 w-full">
-							<span className="absolute left-3.5 top-3 text-xs text-stone-500 font-mono">
-								dock.bio/@
-							</span>
-							<input
-								type="text"
-								placeholder="yourname"
-								value={claimInput}
-								onChange={(e) => setClaimInput(e.target.value)}
-								className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/15 text-sm text-stone-100 placeholder-stone-600 focus:outline-none focus:border-white/40 transition-colors pl-24"
-								autoFocus
-							/>
-						</div>
+					<div className="flex flex-col items-center gap-4 w-full max-w-md">
+						<form onSubmit={handleClaimHandle} className="flex flex-col sm:flex-row items-center gap-3 w-full">
+							<div className="relative flex-1 w-full">
+								<span className="absolute left-3.5 top-3 text-xs text-stone-500 font-mono">
+									dock.bio/@
+								</span>
+								<input
+									type="text"
+									placeholder="yourname"
+									value={claimInput}
+									onChange={(e) => setClaimInput(e.target.value)}
+									className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/15 text-sm text-stone-100 placeholder-stone-600 focus:outline-none focus:border-white/40 transition-colors pl-24"
+									autoFocus
+								/>
+							</div>
 
-						<button
-							type="submit"
-							className="w-full sm:w-auto px-6 py-3 rounded-xl bg-stone-100 hover:bg-white text-stone-900 font-semibold text-xs transition-colors shrink-0 shadow-lg flex items-center justify-center gap-1.5"
-						>
-							<span>Claim & Launch</span>
-							<ArrowRightIcon className="w-3.5 h-3.5 text-stone-900" />
-						</button>
-					</form>
+							<button
+								type="submit"
+								className="w-full sm:w-auto px-6 py-3 rounded-xl bg-stone-100 hover:bg-white text-stone-900 font-semibold text-xs transition-colors shrink-0 shadow-lg flex items-center justify-center gap-1.5"
+							>
+								<span>Claim & Launch</span>
+								<ArrowRightIcon className="w-3.5 h-3.5 text-stone-900" />
+							</button>
+						</form>
+
+						{/* Option 2: Subtle Returning User Link */}
+						<p className="text-xs text-stone-500">
+							Already claimed a handle?{' '}
+							<button
+								onClick={handleSignInClick}
+								className="text-stone-300 hover:text-white underline underline-offset-4 font-medium transition-colors"
+							>
+								Sign In
+							</button>
+						</p>
+					</div>
 				</section>
 			</main>
 		);
@@ -380,7 +430,7 @@ export default function App() {
 
 	return (
 		<main className="min-h-screen bg-stone-950 text-stone-100 flex flex-col items-center justify-between p-6 sm:p-12 font-sans antialiased relative">
-			{/* Pure Minimalist Header - Hugeicons & Explicit Labels */}
+			{/* Pure Minimalist Header */}
 			<header className="w-full max-w-xl flex items-center justify-between z-20 gap-2 flex-wrap">
 				<span className="text-xs font-serif italic text-stone-500 tracking-wider">
 					dock.bio/@{userHandle}

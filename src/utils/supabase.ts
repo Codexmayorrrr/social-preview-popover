@@ -42,6 +42,24 @@ export async function getProfileByHandle(handle: string) {
 }
 
 /**
+ * Fetch user profile by google_id
+ */
+export async function getProfileByGoogleId(googleId: string) {
+	try {
+		const { data: user, error } = await supabase
+			.from('users')
+			.select('*')
+			.eq('google_id', googleId)
+			.single();
+		if (error || !user) return null;
+		return user;
+	} catch (e) {
+		console.error('Error fetching profile by google_id:', e);
+		return null;
+	}
+}
+
+/**
  * Universal Google 1-Click Sign-In
  */
 export async function signInWithGoogle() {
