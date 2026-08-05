@@ -267,7 +267,7 @@ export default function App() {
 			localStorage.setItem(`dock_bio_data_${cleaned}`, JSON.stringify(initialBio));
 			localStorage.setItem('pending_claim_handle', cleaned);
 
-			// Connect 1-Click Google OAuth directly to Claim & Launch button!
+			// Connect 1-Click Google OAuth directly to Claim button!
 			try {
 				await signInWithGoogle();
 			} catch (err) {
@@ -359,7 +359,7 @@ export default function App() {
 							type="submit"
 							className="w-full sm:w-auto px-6 py-3 rounded-xl bg-stone-100 hover:bg-white text-stone-900 font-semibold text-xs transition-colors shrink-0 shadow-lg"
 						>
-							Claim & Launch →
+							Claim →
 						</button>
 					</form>
 				</section>
@@ -369,7 +369,7 @@ export default function App() {
 
 	return (
 		<main className="min-h-screen bg-stone-950 text-stone-100 flex flex-col items-center justify-between p-6 sm:p-12 font-sans antialiased relative">
-			{/* Pure Minimalist Header - NO DB Buttons or Badges */}
+			{/* Pure Minimalist Header - Crisp One-Word CTAs */}
 			<header className="w-full max-w-xl flex items-center justify-between z-20 gap-2 flex-wrap">
 				<span className="text-xs font-serif italic text-stone-500 tracking-wider">
 					dock.bio/@{userHandle}
@@ -412,14 +412,14 @@ export default function App() {
 							onClick={() => setIsBioModalOpen(true)}
 							className="px-3.5 py-1.5 rounded-full bg-white/10 hover:bg-white/20 transition-all text-xs font-medium text-white border border-white/15 flex items-center gap-1 shadow-md"
 						>
-							<span>✏️</span> Edit Bio
+							<span>✏️</span> Bio
 						</button>
 
 						<button
 							onClick={() => setIsAddModalOpen(true)}
 							className="px-3.5 py-1.5 rounded-full bg-stone-100 text-stone-900 hover:bg-white transition-all text-xs font-medium flex items-center gap-1 shadow-md"
 						>
-							<span>+</span> Add Social
+							<span>+</span> Add
 						</button>
 					</div>
 				)}
@@ -449,7 +449,7 @@ export default function App() {
 				{allUserItems.length === 0 && isAdminMode && (
 					<div className="mt-4 p-4 rounded-2xl bg-stone-900/60 border border-white/10 text-stone-400 text-xs flex flex-col gap-2">
 						<span className="text-stone-200 font-medium">Your Liquid Dock is empty</span>
-						<p>Click <strong className="text-white">+ Add Social</strong> in the top header to add your first social media link and build your dock.</p>
+						<p>Click <strong className="text-white">+ Add</strong> in the top header to add your first social media link and build your dock.</p>
 					</div>
 				)}
 			</section>
@@ -565,7 +565,7 @@ export default function App() {
 							onClick={handleSaveBio}
 							className="w-full py-2.5 rounded-xl bg-stone-100 text-stone-900 font-medium text-xs hover:bg-white transition-colors mt-1"
 						>
-							Save Bio & Continue →
+							Save →
 						</button>
 					</div>
 				</div>
@@ -605,7 +605,7 @@ export default function App() {
 									type="submit"
 									className="flex-1 py-2.5 rounded-xl bg-stone-100 text-stone-900 font-medium text-xs hover:bg-white transition-colors"
 								>
-									Add to Dock
+									Add
 								</button>
 								<button
 									type="button"
