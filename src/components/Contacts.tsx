@@ -52,7 +52,7 @@ export function detectPlatformKey(url: string): PlatformKey {
 	return 'generic';
 }
 
-export function extractHandle(url: string, fallback: string = 'dahdagger'): string {
+export function extractHandle(url: string, fallback: string = 'user'): string {
 	try {
 		const parsed = new URL(url.startsWith('http') ? url : `https://${url}`);
 		const parts = parsed.pathname.split('/').filter(Boolean);
@@ -63,6 +63,15 @@ export function extractHandle(url: string, fallback: string = 'dahdagger'): stri
 		return parsed.hostname.replace('www.', '');
 	} catch (e) {
 		return `@${fallback}`;
+	}
+}
+
+export function extractDomain(url: string): string {
+	try {
+		const parsed = new URL(url.startsWith('http') ? url : `https://${url}`);
+		return parsed.hostname.replace('www.', '');
+	} catch (e) {
+		return url;
 	}
 }
 
@@ -122,7 +131,8 @@ export default function Contacts({
 	const popupElementRef = useRef<HTMLDivElement>(null);
 	const activeIconLeftRef = useRef<number>(0);
 
-	const activeItem = items[contentIndex] || items[0];
+	const safeIndex = Math.min(contentIndex, items.length - 1);
+	const activeItem = items[safeIndex] || items[0];
 
 	const direction = useMemo(
 		() => Math.max(Math.min(contentIndex - prevContentIndex, 1), -1),
@@ -223,6 +233,9 @@ export default function Contacts({
 		};
 	}, [open, contentIndex]);
 
+	const domainHost = activeItem ? extractDomain(activeItem.url) : '';
+	const itemHandle = activeItem ? extractHandle(activeItem.url) : '';
+
 	return (
 		<motion.div
 			ref={dockRef}
@@ -237,16 +250,18 @@ export default function Contacts({
 		>
 			{items.map((item, index) => {
 				const isActive = open && contentIndex === index;
+				const domain = extractDomain(item.url);
+				const faviconUrl = `https://www.google.com/s2/favicons?domain=${domain}&sz=64`;
+
 				return (
 					<motion.a
 						key={`${item.key}-${index}`}
-						layout
-						className={`relative z-10 p-2.5 rounded-full transition-colors duration-200 touch-manipulation flex items-center justify-center ${
-							isActive ? '[&_path]:fill-fg scale-105' : '[&_path]:fill-muted hover:[&_path]:fill-fg hover:scale-105 active:scale-95'
-						}`}
 						href={item.url}
 						target="_blank"
 						rel="noopener noreferrer"
+						className={`relative flex size-11 items-center justify-center rounded-full transition-colors ${
+							isActive ? 'text-fg' : 'text-muted hover:text-fg'
+						}`}
 						aria-label={item.label}
 						onPointerEnter={(e) => handleHover(e, index)}
 						onClick={(e) => handleClick(e, index)}
@@ -329,10 +344,8 @@ export default function Contacts({
 								<path d="M12 0C5.37 0 0 5.37 0 12s5.37 12 12 12 12-5.37 12-12S18.63 0 12 0zm9.84 10.86c-2.8-.2-5.45.3-7.85 1.34 1.05 2.68 1.83 5.48 2.24 8.35 3.32-1.76 5.61-5.18 5.61-9.69zM12 21.84c-.39 0-.77-.03-1.15-.08-.34-2.61-1.07-5.17-2.06-7.62 2.63-1.12 5.51-1.63 8.52-1.39-.37 3.86-2.58 7.15-5.31 9.09zm-5.46-3.13c-2.83-1.89-4.7-5.07-4.7-8.71 0-.6.06-1.19.16-1.77 3.54 1.34 6.94 3.34 9.77 5.86-1.42 2.92-2.65 5.92-3.6 9.02-1.03-.43-1.91-1.12-1.63-4.4zm-4.38-12.7c2.47-1.34 5.32-2.01 8.34-1.84 2.87 2.11 5.32 4.67 7.15 7.55-2.8-.24-5.5.21-7.98 1.25C7.03 10.45 4.3 8.5 2.16 6.01z" />
 							</svg>
 						)}
-						{item.key === 'generic' && (
-							<svg viewBox="0 0 24 24" className="size-6 fill-current transition-colors">
-								<path d="M12 2a10 10 0 100 20 10 10 0 000-20zm1 14.93V15a1 1 0 10-2 0v1.93A8.001 8.001 0 014.07 13H6a1 1 0 100-2H4.07A8.001 8.001 0 0111 4.07V6a1 1 0 102 0V4.07A8.001 8.001 0 0119.93 11H18a1 1 0 100 2h1.93A8.001 8.001 0 0113 16.93z" />
-							</svg>
+						{!['github', 'linkedin', 'malt', 'x', 'youtube', 'spotify', 'instagram', 'tiktok', 'twitch', 'discord', 'substack', 'medium', 'figma', 'dribbble'].includes(item.key) && (
+							<img src={faviconUrl} alt={item.label} className="size-5 rounded-full object-cover" />
 						)}
 					</motion.a>
 				);
@@ -358,7 +371,7 @@ export default function Contacts({
 
 						<AnimatePresence mode="wait" initial={false}>
 							<motion.div
-								key={activeItem.key}
+								key={`${activeItem.key}-${activeItem.url}`}
 								ref={popupElementRef}
 								initial={{ x: 220 * direction, opacity: 0, filter: 'blur(4px)' }}
 								animate={{ x: 0, opacity: 1, filter: 'blur(0px)' }}
@@ -372,7 +385,7 @@ export default function Contacts({
 											<img src={avatarSrc} alt={CONTACT.name} className="size-10 rounded-full object-cover" />
 											<div className="flex flex-col min-w-0">
 												<span className="font-semibold text-sm tracking-tight text-fg truncate">
-													{githubProfile?.name || githubProfile?.login || CONTACT.githubUsername}
+													{githubProfile?.name || itemHandle}
 												</span>
 												<p className="text-muted text-xs truncate">{contributionsLabel}</p>
 											</div>
@@ -389,11 +402,11 @@ export default function Contacts({
 										</div>
 										<div className="flex flex-col gap-1 p-3.5 pt-8">
 											<span className="font-semibold text-sm text-fg">
-												{githubProfile?.name || xProfile?.name || CONTACT.name}
+												{itemHandle}
 											</span>
 											<div className="mt-1 flex items-end justify-between gap-3">
 												<p className="text-muted text-xs leading-relaxed max-w-[140px]">
-													{labels?.linkedinHeadline || 'Design Engineer'}
+													{labels?.linkedinHeadline || 'LinkedIn Profile'}
 													<br />
 													{labels?.linkedinLocation || 'Remote'}
 												</p>
@@ -405,39 +418,6 @@ export default function Contacts({
 												>
 													{labels?.linkedinCta || 'Connect'}
 												</a>
-											</div>
-										</div>
-									</div>
-								)}
-
-								{activeItem.key === 'malt' && (
-									<div className="flex flex-col gap-3 p-3.5 w-[min(270px,calc(100vw-3rem))]">
-										<div className="flex items-center gap-3 [&_img]:rounded-md">
-											<img src={avatarSrc} alt={CONTACT.name} className="size-10 rounded-md object-cover" />
-											<div className="flex flex-col min-w-0">
-												<span className="font-semibold text-sm text-fg truncate">
-													{githubProfile?.name || xProfile?.name || CONTACT.name}
-												</span>
-												<p className="text-muted flex items-center gap-1.5 text-xs truncate">
-													<span className="size-1.5 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)] shrink-0" />
-													{labels?.maltAvailability || 'Available for projects'}
-												</p>
-											</div>
-										</div>
-										<div className="text-muted flex items-baseline justify-between gap-4 text-xs text-nowrap">
-											<div className="flex items-center gap-1">
-												<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="size-4 shrink-0 text-muted">
-													<path d="M12 7.5a2.25 2.25 0 1 0 0 4.5 2.25 2.25 0 0 0 0-4.5Z" />
-													<path fillRule="evenodd" d="M1.5 4.875C1.5 3.839 2.34 3 3.375 3h17.25c1.035 0 1.875.84 1.875 1.875v9.75c0 1.036-.84 1.875-1.875 1.875H3.375A1.875 1.875 0 0 1 1.5 14.625v-9.75ZM8.25 9.75a3.75 3.75 0 1 1 7.5 0 3.75 3.75 0 0 1-7.5 0ZM18.75 9a.75.75 0 0 0-.75.75v.008c0 .414.336.75.75.75h.008a.75.75 0 0 0 .75-.75V9.75a.75.75 0 0 0-.75-.75h-.008ZM4.5 9.75A.75.75 0 0 1 5.25 9h.008a.75.75 0 0 1 .75.75v.008a.75.75 0 0 1-.75.75H5.25a.75.75 0 0 1-.75-.75V9.75Z" clipRule="evenodd" />
-													<path d="M2.25 18a.75.75 0 0 0 0 1.5c5.4 0 10.63.722 15.6 2.075 1.2.324 2.4-.558 2.4-1.82V18.75a.75.75 0 0 0-.75-.75H2.25Z" />
-												</svg>
-												{labels?.maltRate || 'Contact for rates'}
-											</div>
-											<div className="flex items-center gap-1">
-												<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="size-4 shrink-0 text-muted">
-													<path fillRule="evenodd" d="m11.54 22.351.07.04.028.016a.76.76 0 0 0 .723 0l.028-.015.071-.041a16.975 16.975 0 0 0 1.144-.742 19.58 19.58 0 0 0 2.683-2.282c1.944-1.99 3.963-4.98 3.963-8.827a8.25 8.25 0 0 0-16.5 0c0 3.846 2.02 6.837 3.963 8.827a19.58 19.58 0 0 0 2.682 2.282 16.975 16.975 0 0 0 1.145.742ZM12 13.5a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z" clipRule="evenodd" />
-												</svg>
-												{labels?.maltLocation || 'Remote'}
 											</div>
 										</div>
 									</div>
@@ -467,9 +447,9 @@ export default function Contacts({
 											<div className="flex justify-between items-start">
 												<div className="flex flex-col mt-5 min-w-0 pr-2">
 													<span className="font-semibold text-sm text-fg truncate">
-														{xProfile?.name || githubProfile?.name || CONTACT.name}
+														{xProfile?.name || itemHandle}
 													</span>
-													<span className="text-muted text-xs truncate">{extractHandle(activeItem.url, 'dahdagger')}</span>
+													<span className="text-muted text-xs truncate">{itemHandle}</span>
 												</div>
 												<a
 													className="bg-fg text-bg hover:bg-fg/90 h-fit rounded-full px-3.5 py-1 text-xs font-semibold transition-all mt-5 shadow-md hover:scale-105 shrink-0"
@@ -489,126 +469,43 @@ export default function Contacts({
 									</div>
 								)}
 
-								{activeItem.key === 'youtube' && (
-									<div className="w-[min(270px,calc(100vw-3rem))] flex flex-col relative overflow-hidden rounded-xl">
-										<div className="h-20 w-full relative overflow-hidden bg-red-950/40">
-											<img
-												className="h-full w-full object-cover opacity-80"
-												src={youtubeProfile?.bannerUrl || '/banner.jpg'}
-												alt=""
-												onLoad={() => {
-													if (popupElementRef.current) {
-														const rect = popupElementRef.current.getBoundingClientRect();
-														setPopupDimensions((prev) => ({
-															...prev,
-															width: Math.round(rect.width),
-															height: Math.round(rect.height),
-														}));
-													}
-												}}
-											/>
-											<div className="absolute inset-0 bg-gradient-to-t from-stone-900/80 to-transparent" />
-										</div>
-										<div className="bg-surface absolute left-3.5 top-20 -translate-y-1/2 rounded-full p-0.5 shadow-lg [&_img]:size-12 [&_img]:rounded-full z-20">
-											<img src={avatarSrc} alt={CONTACT.name} className="size-12 rounded-full object-cover" />
-										</div>
-										<div className="flex flex-col p-3.5 pt-7">
-											<div className="flex justify-between items-start">
-												<div className="flex flex-col min-w-0 pr-2">
-													<span className="font-semibold text-sm text-fg truncate">
-														{youtubeProfile?.name || 'Mayowa Ali'}
-													</span>
-													<span className="text-muted text-xs truncate">
-														{youtubeProfile?.subscribers || '12.4K Subscribers'}
-													</span>
-												</div>
-												<a
-													className="bg-red-600 hover:bg-red-500 text-white h-fit rounded-full px-3 py-1 text-xs font-semibold transition-all shadow-md hover:scale-105 shrink-0"
-													href={activeItem.url}
-													target="_blank"
-													rel="noopener noreferrer"
-												>
-													Subscribe
-												</a>
-											</div>
-										</div>
-									</div>
-								)}
-
-								{activeItem.key === 'spotify' && (
-									<div className="flex flex-col gap-3 p-3.5 w-[min(270px,calc(100vw-3rem))]">
+								{/* Dynamic Popover Card for ALL other platform links (TikTok, Twitch, Substack, Medium, Figma, Dribbble, Generic, etc.) */}
+								{activeItem.key !== 'github' && activeItem.key !== 'linkedin' && activeItem.key !== 'x' && (
+									<div className="flex flex-col gap-3 p-4 w-[min(280px,calc(100vw-3rem))]">
 										<div className="flex items-center gap-3">
-											<img src={avatarSrc} alt={CONTACT.name} className="size-12 rounded-lg object-cover shadow-md" />
-											<div className="flex flex-col min-w-0">
-												<span className="font-semibold text-sm text-fg truncate">
-													{CONTACT.name}
-												</span>
-												<p className="text-muted flex items-center gap-1.5 text-xs truncate">
-													<span className="size-2 rounded-full bg-emerald-500 animate-pulse shrink-0" />
-													Now Playing on Spotify
-												</p>
-											</div>
-										</div>
-										<a
-											href={activeItem.url}
-											target="_blank"
-											rel="noopener noreferrer"
-											className="bg-emerald-950/40 border border-emerald-500/20 p-2.5 rounded-lg flex items-center justify-between gap-2 hover:bg-emerald-900/50 transition-colors"
-										>
-											<div className="flex flex-col min-w-0">
-												<span className="text-xs font-semibold text-fg truncate">Midnight City</span>
-												<span className="text-[11px] text-muted truncate">M83 • Hurry Up, We're Dreaming</span>
-											</div>
-										</a>
-									</div>
-								)}
-
-								{activeItem.key === 'instagram' && (
-									<div className="flex flex-col gap-3 p-3.5 w-[min(270px,calc(100vw-3rem))]">
-										<div className="flex items-center justify-between">
-											<div className="flex items-center gap-2.5">
-												<img src={avatarSrc} alt={CONTACT.name} className="size-9 rounded-full object-cover ring-2 ring-pink-500/50" />
-												<div className="flex flex-col min-w-0">
-													<span className="font-semibold text-xs text-fg truncate">{extractHandle(activeItem.url, 'dahdagger')}</span>
-													<span className="text-[11px] text-muted">1.8K Followers</span>
-												</div>
-											</div>
-											<a
-												className="bg-gradient-to-r from-purple-600 via-pink-600 to-amber-500 text-white rounded-full px-3 py-1 text-xs font-semibold shadow-md shrink-0"
-												href={activeItem.url}
-												target="_blank"
-												rel="noopener noreferrer"
-											>
-												Follow
-											</a>
-										</div>
-									</div>
-								)}
-
-								{/* Universal Fallback Card for TikTok, Twitch, Substack, Discord, Figma, Dribbble, Generic */}
-								{['tiktok', 'twitch', 'discord', 'substack', 'medium', 'figma', 'dribbble', 'behance', 'producthunt', 'threads', 'generic'].includes(activeItem.key) && (
-									<div className="flex flex-col gap-3 p-3.5 w-[min(270px,calc(100vw-3rem))]">
-										<div className="flex items-center gap-3">
-											<div className="size-10 rounded-xl bg-white/10 border border-white/15 flex items-center justify-center text-fg font-bold uppercase text-xs shrink-0">
-												{activeItem.key.slice(0, 2)}
+											<div className="size-11 rounded-xl bg-white/10 border border-white/15 flex items-center justify-center p-2 shrink-0 shadow-inner">
+												<img
+													src={`https://www.google.com/s2/favicons?domain=${domainHost}&sz=64`}
+													alt={activeItem.label}
+													className="size-6 rounded-md object-contain"
+													onError={(e) => {
+														(e.target as HTMLElement).style.display = 'none';
+													}}
+												/>
 											</div>
 											<div className="flex flex-col min-w-0">
 												<span className="font-semibold text-sm text-fg truncate capitalize">
-													{activeItem.key}
+													{activeItem.label || activeItem.key}
 												</span>
 												<span className="text-muted text-xs truncate">
-													{extractHandle(activeItem.url, 'profile')}
+													{itemHandle || domainHost}
 												</span>
 											</div>
 										</div>
-										<a
-											href={activeItem.url}
-											target="_blank"
-											rel="noopener noreferrer"
-											className="w-full text-center py-2 rounded-lg bg-white/10 hover:bg-white/20 border border-white/15 text-fg font-medium text-xs transition-colors"
-										>
-											Visit {activeItem.key.toUpperCase()} Profile
-										</a>
+
+										<div className="flex items-center justify-between pt-1 border-t border-white/10">
+											<span className="text-[11px] text-muted font-mono truncate max-w-[150px]">
+												{domainHost}
+											</span>
+											<a
+												href={activeItem.url}
+												target="_blank"
+												rel="noopener noreferrer"
+												className="px-3.5 py-1.5 rounded-full bg-white/15 hover:bg-white/25 border border-white/20 text-fg font-medium text-xs transition-all shadow-sm hover:scale-105 shrink-0"
+											>
+												Visit Link ↗
+											</a>
+										</div>
 									</div>
 								)}
 							</motion.div>
