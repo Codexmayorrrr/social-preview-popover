@@ -7,6 +7,7 @@ import {
 	supabase,
 	getProfileByHandle,
 	getCurrentUser,
+	signInWithGoogle,
 	syncUserAndLinksToDatabase,
 } from './utils/supabase';
 
@@ -165,15 +166,24 @@ export default function App() {
 		fetchFromSupabase();
 	}, [userHandle]);
 
-	// Supabase Auth & Silent Background Database Sync
+	// Supabase Auth Listener & Post-Auth Handle Reservation
 	useEffect(() => {
 		getCurrentUser().then((user) => setAuthUser(user));
 
-		const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
+		const { data: authListener } = supabase.auth.onAuthStateChange(async (_event, session) => {
 			const currentUser = session?.user || null;
 			setAuthUser(currentUser);
+
 			if (currentUser) {
-				syncUserAndLinksToDatabase(currentUser, userHandle, bioData, allUserItems);
+				const pendingHandle = localStorage.getItem('pending_claim_handle');
+				const targetHandle = pendingHandle || userHandle;
+
+				await syncUserAndLinksToDatabase(currentUser, targetHandle, bioData, allUserItems);
+
+				if (pendingHandle) {
+					localStorage.removeItem('pending_claim_handle');
+					window.location.href = `/@${pendingHandle}?admin=true`;
+				}
 			}
 		});
 
@@ -240,12 +250,11 @@ export default function App() {
 		}
 	}
 
-	function handleClaimHandle(e: React.FormEvent) {
+	async function handleClaimHandle(e: React.FormEvent) {
 		e.preventDefault();
 		const cleaned = claimInput.trim().toLowerCase().replace(/[^a-z0-9_-]/g, '');
 		if (!cleaned) return;
 
-		// Initialize empty dock [] and default bio for new user handle
 		if (typeof window !== 'undefined') {
 			const initialBio: UserBioData = {
 				displayName: `@${cleaned}`,
@@ -256,7 +265,16 @@ export default function App() {
 			};
 			localStorage.setItem(`dock_bio_items_${cleaned}`, JSON.stringify([]));
 			localStorage.setItem(`dock_bio_data_${cleaned}`, JSON.stringify(initialBio));
-			window.location.href = `/@${cleaned}?admin=true`;
+			localStorage.setItem('pending_claim_handle', cleaned);
+
+			// Connect 1-Click Google OAuth directly to Claim & Launch button!
+			try {
+				await signInWithGoogle();
+			} catch (err) {
+				console.error('Google Sign In failed/cancelled:', err);
+				// Fallback redirect
+				window.location.href = `/@${cleaned}?admin=true`;
+			}
 		}
 	}
 
