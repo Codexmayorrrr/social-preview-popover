@@ -359,12 +359,12 @@ export default function Contacts({
 							opacity: 1,
 							scale: 1,
 							left: `${popupDimensions.left}px`,
-							width: `${popupDimensions.width}px`,
-							height: `${popupDimensions.height}px`,
+							width: popupDimensions.width > 0 ? `${popupDimensions.width}px` : 'auto',
+							height: popupDimensions.height > 0 ? `${popupDimensions.height}px` : 'auto',
 						}}
 						exit={{ opacity: 0, scale: 0.95 }}
 						transition={{ type: 'spring', stiffness: 380, damping: 30 }}
-						className="squircle-sm border border-white/20 dark:border-white/15 bg-white/10 dark:bg-stone-900/50 backdrop-blur-3xl absolute bottom-[calc(100%+0.85rem)] flex -translate-x-1/2 items-end overflow-hidden shadow-[0_25px_60px_-15px_rgba(0,0,0,0.6),0_0_20px_rgba(255,255,255,0.05)] z-50 transition-shadow duration-300 max-w-[calc(100vw-1.5rem)]"
+						className="squircle-sm border border-white/20 dark:border-white/15 bg-white/10 dark:bg-stone-900/50 backdrop-blur-3xl absolute bottom-[calc(100%+0.85rem)] flex -translate-x-1/2 items-end overflow-hidden shadow-[0_25px_60px_-15px_rgba(0,0,0,0.6),0_0_20px_rgba(255,255,255,0.05)] z-50 transition-shadow duration-300 max-w-[calc(100vw-1.5rem)] min-w-[220px] min-h-[90px]"
 					>
 						<div className="absolute inset-x-0 top-0 h-[1px] bg-linear-to-r from-transparent via-white/40 to-transparent z-30 pointer-events-none" />
 						<div className="absolute inset-0 bg-linear-to-b from-white/12 via-white/4 to-transparent pointer-events-none z-20" />
@@ -377,7 +377,7 @@ export default function Contacts({
 								animate={{ x: 0, opacity: 1, filter: 'blur(0px)' }}
 								exit={{ x: -220 * direction, opacity: 0, filter: 'blur(4px)' }}
 								transition={{ type: 'spring', stiffness: 320, damping: 28 }}
-								className="relative z-10 w-max h-max max-w-[calc(100vw-2rem)]"
+								className="relative z-10 w-max h-max max-w-[calc(100vw-2rem)] min-w-[220px]"
 							>
 								{activeItem.key === 'github' && (
 									<div className="flex flex-col gap-3 p-3.5 max-w-full overflow-hidden">
