@@ -42,12 +42,12 @@ export async function getProfileByHandle(handle: string) {
 }
 
 /**
- * Check if a handle is available or taken by another user
+ * Check if a handle is available or registered to another email
  */
 export async function checkHandleAvailability(
 	handle: string,
 	currentGoogleId?: string
-): Promise<{ available: boolean; ownerId?: string }> {
+): Promise<{ available: boolean; ownerId?: string; ownerEmail?: string }> {
 	if (!handle || !handle.trim()) return { available: true };
 	const cleanHandle = handle.trim().toLowerCase().replace(/[^a-z0-9_-]/g, '');
 	if (!cleanHandle) return { available: true };
@@ -55,7 +55,7 @@ export async function checkHandleAvailability(
 	try {
 		const { data: user, error } = await supabase
 			.from('users')
-			.select('id, google_id, handle')
+			.select('id, google_id, email, handle')
 			.eq('handle', cleanHandle)
 			.maybeSingle();
 
@@ -64,10 +64,10 @@ export async function checkHandleAvailability(
 		}
 
 		if (currentGoogleId && user.google_id === currentGoogleId) {
-			return { available: true, ownerId: user.google_id };
+			return { available: true, ownerId: user.google_id, ownerEmail: user.email };
 		}
 
-		return { available: false, ownerId: user.google_id };
+		return { available: false, ownerId: user.google_id, ownerEmail: user.email };
 	} catch (e) {
 		console.error('Error checking handle availability:', e);
 		return { available: true };
@@ -128,7 +128,7 @@ export async function getCurrentUser() {
 
 /**
  * Sync or Create User Profile and Bulk Save Links in Supabase
- * ENFORCES STRICT 1 EMAIL = 1 HANDLE RULE
+ * ENFORCES STRICT 1 HANDLE <-> 1 EMAIL MAPPING
  */
 export async function syncUserAndLinksToDatabase(
 	authUser: any,
@@ -142,11 +142,19 @@ export async function syncUserAndLinksToDatabase(
 		// 1. Check if user already exists (by google_id or email)
 		const existingProfile = await getProfileByAuthUser(authUser);
 
-		// STRICT 1 EMAIL = 1 HANDLE RULE:
-		// If user already owns a handle in DB, preserve their primary registered handle!
-		const finalHandle = (existingProfile && existingProfile.handle)
-			? existingProfile.handle.toLowerCase()
-			: requestedHandle.toLowerCase().replace(/[^a-z0-9_-]/g, '');
+		let finalHandle = requestedHandle.toLowerCase().replace(/[^a-z0-9_-]/g, '');
+
+		if (existingProfile && existingProfile.handle) {
+			// If this email already has a handle, preserve its 1-to-1 handle!
+			finalHandle = existingProfile.handle.toLowerCase();
+		} else {
+			// Validate that this handle is NOT registered to another email address
+			const availability = await checkHandleAvailability(finalHandle, authUser.id);
+			if (!availability.available) {
+				console.warn(`Handle @${finalHandle} is already registered to another email address (${availability.ownerEmail}).`);
+				return null;
+			}
+		}
 
 		if (!finalHandle) return null;
 

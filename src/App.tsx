@@ -114,11 +114,11 @@ export default function App() {
 		setHandleStatus('checking');
 
 		const timer = setTimeout(async () => {
-			// Check 1: Check if handle is taken in Supabase
+			// Check 1: Check if handle is already taken by another user/email
 			const result = await checkHandleAvailability(cleaned, authUser?.id);
 			if (!result.available) {
 				setHandleStatus('taken');
-				setHandleErrorMsg(`@${cleaned} is already taken by another user. Please choose a different handle.`);
+				setHandleErrorMsg(`@${cleaned} is already registered to another email. One handle can only be linked to one email.`);
 				return;
 			}
 
@@ -258,6 +258,15 @@ export default function App() {
 				const pendingHandle = localStorage.getItem('pending_claim_handle');
 
 				if (pendingHandle) {
+					const availability = await checkHandleAvailability(pendingHandle, currentUser.id);
+
+					if (!availability.available) {
+						localStorage.removeItem('pending_claim_handle');
+						alert(`The handle @${pendingHandle} is already registered to another email address. One handle can only be linked to one email.`);
+						window.location.href = '/join';
+						return;
+					}
+
 					await syncUserAndLinksToDatabase(currentUser, pendingHandle, bioData, allUserItems);
 					localStorage.removeItem('pending_claim_handle');
 					window.location.href = `/@${pendingHandle}?admin=true`;
@@ -333,7 +342,7 @@ export default function App() {
 		const cleaned = claimInput.trim().toLowerCase().replace(/[^a-z0-9_-]/g, '');
 		if (!cleaned) return;
 
-		// STRICT 1 EMAIL = 1 HANDLE RULE:
+		// Check 1: STRICT 1 EMAIL = 1 HANDLE RULE (If signed in, user cannot claim a 2nd handle)
 		if (authUser) {
 			const existingProfile = await getProfileByAuthUser(authUser);
 			if (existingProfile && existingProfile.handle && existingProfile.handle !== cleaned) {
@@ -346,12 +355,13 @@ export default function App() {
 			}
 		}
 
+		// Check 2: STRICT 1 HANDLE = 1 EMAIL RULE (Handle cannot belong to another email)
 		setHandleStatus('checking');
 		const availability = await checkHandleAvailability(cleaned, authUser?.id);
 
 		if (!availability.available) {
 			setHandleStatus('taken');
-			setHandleErrorMsg(`@${cleaned} is already taken by another user. Please choose a different handle.`);
+			setHandleErrorMsg(`@${cleaned} is already registered to another email address. One handle can only be linked to one email.`);
 			return;
 		}
 
