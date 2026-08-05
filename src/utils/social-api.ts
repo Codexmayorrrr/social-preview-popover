@@ -1,5 +1,5 @@
 const DEFAULT_AVATAR = '/avatar.jpg';
-const DEFAULT_BANNER = '/banner.jpg';
+const DYNAMIC_BANNER_FALLBACK = 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=600&q=80';
 
 export function extractDomain(url: string): string {
 	try {
@@ -97,7 +97,7 @@ export async function getXProfile(handle: string) {
 			if (rawBanner && !rawBanner.match(/\/(600x200|1500x500|1080x360|mobile_retina)$/)) {
 				rawBanner = `${rawBanner.replace(/\/$/, '')}/600x200`;
 			}
-			const banner = rawBanner || DEFAULT_BANNER;
+			const banner = rawBanner || DYNAMIC_BANNER_FALLBACK;
 
 			return {
 				name: data.name || cleanHandle,
@@ -120,6 +120,6 @@ export async function getXProfile(handle: string) {
 		followers: 150,
 		following: 200,
 		avatarUrl: `https://unavatar.io/twitter/${cleanHandle}`,
-		bannerUrl: DEFAULT_BANNER,
+		bannerUrl: DYNAMIC_BANNER_FALLBACK,
 	};
 }
