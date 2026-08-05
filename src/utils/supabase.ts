@@ -42,6 +42,39 @@ export async function getProfileByHandle(handle: string) {
 }
 
 /**
+ * Check if a handle is available or taken by another user
+ */
+export async function checkHandleAvailability(
+	handle: string,
+	currentGoogleId?: string
+): Promise<{ available: boolean; ownerId?: string }> {
+	if (!handle || !handle.trim()) return { available: true };
+	const cleanHandle = handle.trim().toLowerCase().replace(/[^a-z0-9_-]/g, '');
+	if (!cleanHandle) return { available: true };
+
+	try {
+		const { data: user, error } = await supabase
+			.from('users')
+			.select('id, google_id, handle')
+			.eq('handle', cleanHandle)
+			.maybeSingle();
+
+		if (error || !user) {
+			return { available: true };
+		}
+
+		if (currentGoogleId && user.google_id === currentGoogleId) {
+			return { available: true, ownerId: user.google_id };
+		}
+
+		return { available: false, ownerId: user.google_id };
+	} catch (e) {
+		console.error('Error checking handle availability:', e);
+		return { available: true };
+	}
+}
+
+/**
  * Fetch user profile by Auth User (matching google_id or email)
  */
 export async function getProfileByAuthUser(authUser: any) {
@@ -110,43 +143,42 @@ export async function syncUserAndLinksToDatabase(
 			google_id: authUser.id,
 			email: authUser.email,
 			handle: handle.toLowerCase(),
-			display_name: bioData.displayName || authUser.user_metadata?.full_name || `@${handle}`,
-			bio: `${bioData.role || ''} | ${bioData.location || ''} | ${bioData.specialties || ''}`,
-			avatar_url: authUser.user_metadata?.avatar_url || '',
+			display_name: bioData.displayName || `@${handle}`,
+			role: bioData.role || 'Creator & Builder',
+			location: bioData.location || 'Remote',
+			work_style: bioData.workStyle || 'remotely',
+			specialties: bioData.specialties || '',
 			updated_at: new Date().toISOString(),
 		};
 
-		const { data: dbUser, error: userErr } = await supabase
+		const { data: userRecord, error: userError } = await supabase
 			.from('users')
 			.upsert(userPayload, { onConflict: 'google_id' })
 			.select()
 			.single();
 
-		if (userErr) {
-			console.error('Error upserting user:', userErr);
+		if (userError) {
+			console.error('Error upserting user:', userError);
 			return null;
 		}
 
-		// 2. Bulk Insert/Update Links
-		if (dbUser && items.length > 0) {
-			const formattedLinks = items.map((item, index) => ({
-				user_id: dbUser.id,
+		// 2. Sync Link Records
+		if (items && items.length > 0) {
+			const linkPayloads = items.map((item, index) => ({
+				user_id: userRecord.id,
 				platform_key: item.key,
 				url: item.url,
 				position: index,
 				is_active: true,
 			}));
 
-			const { error: linksErr } = await supabase
-				.from('links')
-				.upsert(formattedLinks, { onConflict: 'id' });
-
-			if (linksErr) console.error('Error upserting links:', linksErr);
+			await supabase.from('links').delete().eq('user_id', userRecord.id);
+			await supabase.from('links').insert(linkPayloads);
 		}
 
-		return dbUser;
+		return userRecord;
 	} catch (e) {
-		console.error('Error in syncUserAndLinksToDatabase:', e);
+		console.error('Error syncing data to Supabase:', e);
 		return null;
 	}
 }

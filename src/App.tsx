@@ -7,6 +7,7 @@ import {
 	supabase,
 	getProfileByHandle,
 	getProfileByAuthUser,
+	checkHandleAvailability,
 	getCurrentUser,
 	signInWithGoogle,
 	syncUserAndLinksToDatabase,
@@ -87,6 +88,9 @@ function getUserHandleFromUrl(): string {
 export default function App() {
 	const [userHandle] = useState<string>(() => getUserHandleFromUrl());
 	const [claimInput, setClaimInput] = useState<string>('');
+	const [handleStatus, setHandleStatus] = useState<'idle' | 'checking' | 'available' | 'taken'>('idle');
+	const [handleErrorMsg, setHandleErrorMsg] = useState<string | null>(null);
+
 	const [authUser, setAuthUser] = useState<any>(null);
 	const [dbProfileOwnerId, setDbProfileOwnerId] = useState<string | null>(null);
 
@@ -97,6 +101,31 @@ export default function App() {
 		}
 		return false;
 	});
+
+	// Real-time handle uniqueness validation
+	useEffect(() => {
+		const cleaned = claimInput.trim().toLowerCase().replace(/[^a-z0-9_-]/g, '');
+		if (!cleaned) {
+			setHandleStatus('idle');
+			setHandleErrorMsg(null);
+			return;
+		}
+
+		setHandleStatus('checking');
+
+		const timer = setTimeout(async () => {
+			const result = await checkHandleAvailability(cleaned, authUser?.id);
+			if (!result.available) {
+				setHandleStatus('taken');
+				setHandleErrorMsg(`@${cleaned} is already taken by another user. Please choose a different handle.`);
+			} else {
+				setHandleStatus('available');
+				setHandleErrorMsg(null);
+			}
+		}, 300);
+
+		return () => clearTimeout(timer);
+	}, [claimInput, authUser]);
 
 	// Option 3: Smart Handle Owner Recognition + URL query param check
 	const isExplicitAdminParam = Boolean(
@@ -296,6 +325,15 @@ export default function App() {
 		const cleaned = claimInput.trim().toLowerCase().replace(/[^a-z0-9_-]/g, '');
 		if (!cleaned) return;
 
+		setHandleStatus('checking');
+		const availability = await checkHandleAvailability(cleaned, authUser?.id);
+
+		if (!availability.available) {
+			setHandleStatus('taken');
+			setHandleErrorMsg(`@${cleaned} is already taken by another user. Please choose a different handle.`);
+			return;
+		}
+
 		if (typeof window !== 'undefined') {
 			const initialBio: UserBioData = {
 				displayName: `@${cleaned}`,
@@ -338,39 +376,34 @@ export default function App() {
 			key,
 		};
 
-		const existingIndex = allUserItems.findIndex((i) => i.key === key);
-		if (existingIndex !== -1 && key !== 'generic') {
-			const updated = [...allUserItems];
-			updated[existingIndex] = newItem;
-			setAllUserItems(updated);
-		} else {
-			setAllUserItems([...allUserItems, newItem]);
-		}
-
+		const updatedItems = [...allUserItems.filter((i) => i.key !== key), newItem];
+		setAllUserItems(updatedItems);
 		setInputUrl('');
 		setIsAddModalOpen(false);
 	}
 
-	function handleRemoveItem(key: PlatformItem['key']) {
-		setAllUserItems(allUserItems.filter((i) => i.key !== key));
+	function handleRemoveItem(keyToRemove: PlatformItem['key']) {
+		const updatedItems = allUserItems.filter((i) => i.key !== keyToRemove);
+		setAllUserItems(updatedItems);
 	}
 
-	function applyRoleTemplate(template: typeof ROLE_TEMPLATES[0]) {
-		setBioData({
-			...bioData,
+	function applyRoleTemplate(template: (typeof ROLE_TEMPLATES)[0]) {
+		setBioData((prev) => ({
+			...prev,
 			role: template.role,
 			specialties: template.specialties,
-		});
+		}));
 	}
 
-	function handleSaveBio() {
+	function handleSaveBioData(e: React.FormEvent) {
+		e.preventDefault();
+		setIsBioModalOpen(false);
 		if (typeof window !== 'undefined') {
 			localStorage.setItem(`dock_bio_setup_done_${userHandle}`, 'true');
 		}
-		setIsBioModalOpen(false);
 	}
 
-	// Uncluttered Onboarding View (/join or ?join=true) with Returning User Sign In Link
+	// Step 1: Clean Onboarding View for /join page
 	if (isLandingPage) {
 		return (
 			<main className="min-h-screen bg-stone-950 text-stone-100 flex flex-col items-center justify-between p-6 sm:p-12 font-sans antialiased relative">
@@ -404,22 +437,44 @@ export default function App() {
 									placeholder="yourname"
 									value={claimInput}
 									onChange={(e) => setClaimInput(e.target.value)}
-									className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/15 text-sm text-stone-100 placeholder-stone-600 focus:outline-none focus:border-white/40 transition-colors pl-24"
+									className={`w-full px-4 py-3 rounded-xl bg-white/5 border text-sm text-stone-100 placeholder-stone-600 focus:outline-none transition-colors pl-24 ${
+										handleStatus === 'taken'
+											? 'border-red-500/80 focus:border-red-500'
+											: handleStatus === 'available' && claimInput.trim()
+											? 'border-emerald-500/80 focus:border-emerald-500'
+											: 'border-white/15 focus:border-white/40'
+									}`}
 									autoFocus
 								/>
 							</div>
 
 							<button
 								type="submit"
-								className="w-full sm:w-auto px-6 py-3 rounded-xl bg-stone-100 hover:bg-white text-stone-900 font-semibold text-xs transition-colors shrink-0 shadow-lg flex items-center justify-center gap-1.5"
+								disabled={handleStatus === 'taken' || handleStatus === 'checking'}
+								className="w-full sm:w-auto px-6 py-3 rounded-xl bg-stone-100 hover:bg-white text-stone-900 font-semibold text-xs transition-colors shrink-0 shadow-lg flex items-center justify-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
 							>
-								<span>Claim & Launch</span>
+								<span>{handleStatus === 'checking' ? 'Checking...' : 'Claim & Launch'}</span>
 								<ArrowRightIcon className="w-3.5 h-3.5 text-stone-900" />
 							</button>
 						</form>
 
+						{/* Real-time Handle Feedback Alert */}
+						{handleStatus === 'taken' && (
+							<div className="w-full text-left p-3 rounded-xl bg-red-950/40 border border-red-500/30 text-red-400 text-xs flex items-center gap-2 animate-fadeIn">
+								<span>⚠️</span>
+								<span>{handleErrorMsg}</span>
+							</div>
+						)}
+
+						{handleStatus === 'available' && claimInput.trim().length > 0 && (
+							<div className="w-full text-left px-3.5 py-2 rounded-xl bg-emerald-950/30 border border-emerald-500/20 text-emerald-400 text-xs flex items-center gap-2">
+								<span>✓</span>
+								<span>@{claimInput.trim().toLowerCase().replace(/[^a-z0-9_-]/g, '')} is available!</span>
+							</div>
+						)}
+
 						{/* Option 2: Subtle Returning User Link */}
-						<p className="text-xs text-stone-500">
+						<p className="text-xs text-stone-500 mt-1">
 							Already claimed a handle?{' '}
 							<button
 								onClick={handleSignInClick}
@@ -540,139 +595,160 @@ export default function App() {
 				</footer>
 			)}
 
-			{/* Interactive Sentence Builder Bio Modal */}
-			{isAdminMode && isBioModalOpen && (
-				<div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-md flex items-center justify-center p-4">
-					<div className="bg-stone-900/90 border border-white/15 rounded-2xl p-6 w-full max-w-md shadow-2xl flex flex-col gap-5 relative">
-						<div className="flex items-center justify-between">
-							<h3 className="font-serif italic text-base text-stone-100">Setup Your Bio Intro</h3>
+			{/* EDIT BIO MODAL */}
+			{isBioModalOpen && (
+				<div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fadeIn">
+					<div className="bg-stone-900 border border-white/15 rounded-3xl p-6 sm:p-8 max-w-lg w-full shadow-2xl flex flex-col gap-6 text-left">
+						<div className="flex justify-between items-center">
+							<h2 className="text-lg font-semibold text-stone-100">Edit Your Bio</h2>
 							<button
-								onClick={handleSaveBio}
-								className="text-stone-500 hover:text-stone-200 text-sm p-1"
+								onClick={() => setIsBioModalOpen(false)}
+								className="text-stone-400 hover:text-white text-lg font-bold"
 							>
 								✕
 							</button>
 						</div>
 
-						{/* Option 2: Quick Template Role Chips with Hugeicons */}
-						<div className="flex flex-col gap-2">
-							<span className="text-[11px] text-stone-500 font-medium uppercase tracking-wider">Quick Role Templates</span>
-							<div className="flex flex-wrap gap-1.5">
-								{ROLE_TEMPLATES.map((t, idx) => {
-									const IconComp = t.icon;
-									return (
-										<button
-											key={idx}
-											onClick={() => applyRoleTemplate(t)}
-											className="text-xs px-3 py-1.5 rounded-full bg-white/5 hover:bg-white/15 border border-white/10 text-stone-300 transition-colors flex items-center gap-1.5"
-										>
-											<IconComp className="w-3.5 h-3.5 text-stone-400" />
-											<span>{t.label}</span>
-										</button>
-									);
-								})}
+						<form onSubmit={handleSaveBioData} className="flex flex-col gap-4">
+							{/* Quick Role Presets */}
+							<div className="flex flex-col gap-2">
+								<label className="text-xs text-stone-400 font-medium">Quick Role Templates:</label>
+								<div className="flex flex-wrap gap-2">
+									{ROLE_TEMPLATES.map((tmpl) => {
+										const IconComponent = tmpl.icon;
+										return (
+											<button
+												key={tmpl.label}
+												type="button"
+												onClick={() => applyRoleTemplate(tmpl)}
+												className="px-3 py-1.5 rounded-full bg-white/5 border border-white/10 hover:bg-white/15 text-stone-200 text-xs font-medium transition-all flex items-center gap-1.5"
+											>
+												<IconComponent className="w-3.5 h-3.5 text-stone-300" />
+												<span>{tmpl.label}</span>
+											</button>
+										);
+									})}
+								</div>
 							</div>
-						</div>
 
-						{/* Option 1: 2-Field Micro Inputs */}
-						<div className="flex flex-col gap-3 pt-2 border-t border-white/10">
-							<span className="text-[11px] text-stone-500 font-medium uppercase tracking-wider">Customize Bio Details</span>
-
-							<div className="flex flex-col gap-1">
-								<label className="text-[11px] text-stone-400">Display Name</label>
+							<div className="flex flex-col gap-1.5">
+								<label className="text-xs text-stone-400 font-medium">Display Name:</label>
 								<input
 									type="text"
 									value={bioData.displayName}
 									onChange={(e) => setBioData({ ...bioData, displayName: e.target.value })}
-									className="px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-xs text-stone-100 focus:outline-none focus:border-white/30"
+									placeholder="Mayowa Ali"
+									className="px-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-sm text-stone-100 focus:outline-none focus:border-white/30"
 								/>
 							</div>
 
-							<div className="grid grid-cols-2 gap-2">
-								<div className="flex flex-col gap-1">
-									<label className="text-[11px] text-stone-400">Role / Title</label>
+							<div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+								<div className="flex flex-col gap-1.5">
+									<label className="text-xs text-stone-400 font-medium">Role / Title:</label>
 									<input
 										type="text"
 										value={bioData.role}
 										onChange={(e) => setBioData({ ...bioData, role: e.target.value })}
-										className="px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-xs text-stone-100 focus:outline-none focus:border-white/30"
+										placeholder="Design Engineer"
+										className="px-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-sm text-stone-100 focus:outline-none focus:border-white/30"
 									/>
 								</div>
-								<div className="flex flex-col gap-1">
-									<label className="text-[11px] text-stone-400">Location</label>
+								<div className="flex flex-col gap-1.5">
+									<label className="text-xs text-stone-400 font-medium">Location:</label>
 									<input
 										type="text"
 										value={bioData.location}
 										onChange={(e) => setBioData({ ...bioData, location: e.target.value })}
-										className="px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-xs text-stone-100 focus:outline-none focus:border-white/30"
+										placeholder="Lagos, Nigeria"
+										className="px-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-sm text-stone-100 focus:outline-none focus:border-white/30"
 									/>
 								</div>
 							</div>
 
-							<div className="flex flex-col gap-1">
-								<label className="text-[11px] text-stone-400">Specialties / Focus Areas</label>
+							<div className="flex flex-col gap-1.5">
+								<label className="text-xs text-stone-400 font-medium">Work Style:</label>
 								<input
 									type="text"
-									value={bioData.specialties}
-									onChange={(e) => setBioData({ ...bioData, specialties: e.target.value })}
-									className="px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-xs text-stone-100 focus:outline-none focus:border-white/30"
+									value={bioData.workStyle}
+									onChange={(e) => setBioData({ ...bioData, workStyle: e.target.value })}
+									placeholder="remotely"
+									className="px-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-sm text-stone-100 focus:outline-none focus:border-white/30"
 								/>
 							</div>
-						</div>
 
-						{/* Live Interactive Sentence Preview */}
-						<div className="bg-white/5 p-3.5 rounded-xl border border-white/10 flex flex-col gap-1 text-xs">
-							<span className="text-[10px] text-stone-500 uppercase tracking-wider font-semibold">Live Preview</span>
-							<p className="text-stone-300 leading-relaxed">
-								I am a <strong className="text-white">{bioData.role || 'Role'}</strong> based in{' '}
-								<strong className="text-white">{bioData.location || 'Location'}</strong>, working{' '}
-								<strong className="text-white">{bioData.workStyle || 'remotely'}</strong>.
-							</p>
-						</div>
+							<div className="flex flex-col gap-1.5">
+								<label className="text-xs text-stone-400 font-medium">Specialties:</label>
+								<textarea
+									rows={2}
+									value={bioData.specialties}
+									onChange={(e) => setBioData({ ...bioData, specialties: e.target.value })}
+									placeholder="UI engineering, micro-interactions, and motion physics"
+									className="px-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-sm text-stone-100 focus:outline-none focus:border-white/30 resize-none"
+								/>
+							</div>
 
-						<button
-							onClick={handleSaveBio}
-							className="w-full py-2.5 rounded-xl bg-stone-100 text-stone-900 font-medium text-xs hover:bg-white transition-colors mt-1"
-						>
-							Save Bio & Continue →
-						</button>
+							<div className="flex justify-end gap-3 mt-4">
+								<button
+									type="button"
+									onClick={() => setIsBioModalOpen(false)}
+									className="px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-stone-300 text-xs font-medium transition-colors"
+								>
+									Cancel
+								</button>
+								<button
+									type="submit"
+									className="px-5 py-2 rounded-xl bg-stone-100 hover:bg-white text-stone-900 text-xs font-semibold transition-colors"
+								>
+									Save Bio
+								</button>
+							</div>
+						</form>
 					</div>
 				</div>
 			)}
 
-			{/* Admin Mode: Add Social Link Modal */}
-			{isAdminMode && isAddModalOpen && (
-				<div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-md flex items-center justify-center p-4">
-					<div className="bg-stone-900/90 border border-white/15 rounded-2xl p-6 w-full max-w-sm shadow-2xl flex flex-col gap-4 relative">
-						<div className="flex items-center justify-between">
-							<h3 className="font-serif italic text-base text-stone-100">Add Social Link</h3>
+			{/* ADD SOCIAL LINK MODAL */}
+			{isAddModalOpen && (
+				<div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fadeIn">
+					<div className="bg-stone-900 border border-white/15 rounded-3xl p-6 sm:p-8 max-w-md w-full shadow-2xl flex flex-col gap-6 text-left">
+						<div className="flex justify-between items-center">
+							<h2 className="text-lg font-semibold text-stone-100">Add Social Link</h2>
 							<button
 								onClick={() => setIsAddModalOpen(false)}
-								className="text-stone-500 hover:text-stone-200 text-sm p-1"
+								className="text-stone-400 hover:text-white text-lg font-bold"
 							>
 								✕
 							</button>
 						</div>
 
-						<form onSubmit={handleAddLink} className="flex flex-col gap-3">
-							<div className="relative">
+						<form onSubmit={handleAddLink} className="flex flex-col gap-4">
+							<div className="flex flex-col gap-2">
+								<label className="text-xs text-stone-400 font-medium">Paste Social URL:</label>
 								<input
 									type="text"
-									placeholder="Paste ANY link (e.g. tiktok, twitch, substack, figma, etc.)"
+									placeholder="https://github.com/yourname or https://tiktok.com/@username"
 									value={inputUrl}
 									onChange={(e) => setInputUrl(e.target.value)}
-									className="w-full px-3.5 py-2.5 rounded-xl bg-white/5 border border-white/10 text-xs text-stone-100 placeholder-stone-500 focus:outline-none focus:border-white/30 transition-colors pr-24"
+									className="px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-sm text-stone-100 placeholder-stone-600 focus:outline-none focus:border-white/30"
 									autoFocus
 								/>
-								<span className="absolute right-3 top-2.5 text-[10px] text-stone-300 font-semibold uppercase tracking-wider bg-white/15 px-2 py-0.5 rounded border border-white/10">
-									{detectedKey}
-								</span>
 							</div>
 
-							<div className="flex items-center gap-2 pt-1">
+							{/* Auto-Detected Platform Badge */}
+							{inputUrl.trim() && (
+								<div className="flex items-center gap-2 p-3 rounded-xl bg-white/5 border border-white/10 text-xs text-stone-300">
+									<span className="text-stone-500 font-medium">Detected Platform:</span>
+									<span className="px-2.5 py-0.5 rounded-full bg-white/10 text-white font-semibold capitalize">
+										{detectedKey}
+									</span>
+								</div>
+							)}
+
+							<div className="flex items-center gap-3 pt-2">
 								<button
 									type="submit"
-									className="flex-1 py-2.5 rounded-xl bg-stone-100 text-stone-900 font-medium text-xs hover:bg-white transition-colors flex items-center justify-center gap-1"
+									disabled={!inputUrl.trim()}
+									className="flex-1 px-4 py-2.5 rounded-xl bg-stone-100 hover:bg-white text-stone-900 font-semibold text-xs transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-1.5"
 								>
 									<PlusIcon className="w-3.5 h-3.5 text-stone-900" />
 									<span>Add to Dock</span>
