@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { CONTACT } from '../config';
 import GithubGraph from './GithubGraph';
 import type { Contributions } from '../utils/github-contributions';
-import { getGithubProfile, getXProfile, parseUsernameFromUrl } from '../utils/social-api';
+import { getGithubProfile, getXProfile, parseUsernameFromUrl, getSocialAvatarUrl } from '../utils/social-api';
 import { getGithubContributions } from '../utils/github-contributions';
 
 export type PlatformKey =
@@ -105,7 +105,6 @@ const defaultItems: PlatformItem[] = [
 
 export default function Contacts({
 	items = defaultItems,
-	contributionsLabel = '142 contributions in 2026',
 	labels = {
 		linkedinHeadline: 'Design Engineer',
 		linkedinLocation: 'Remote',
@@ -155,10 +154,13 @@ export default function Contacts({
 		}
 	}, [activeItem]);
 
-	const avatarSrc = useMemo(
-		() => liveXProfile?.avatarUrl || liveGithubProfile?.avatarUrl || '/avatar.jpg',
-		[liveXProfile, liveGithubProfile],
-	);
+	const avatarSrc = useMemo(() => {
+		if (!activeItem) return '/avatar.jpg';
+		const handle = parseUsernameFromUrl(activeItem.url, activeItem.key);
+		if (activeItem.key === 'github' && liveGithubProfile?.avatarUrl) return liveGithubProfile.avatarUrl;
+		if (activeItem.key === 'x' && liveXProfile?.avatarUrl) return liveXProfile.avatarUrl;
+		return getSocialAvatarUrl(activeItem.key, handle, activeItem.url);
+	}, [activeItem, liveGithubProfile, liveXProfile]);
 
 	function calculateClampedLeft(rawLeft: number, cardWidth: number = 280) {
 		if (!dockRef.current) return rawLeft;
@@ -343,7 +345,7 @@ export default function Contacts({
 								{activeItem.key === 'github' && (
 									<div className="flex flex-col gap-3 p-3.5 max-w-full overflow-hidden">
 										<div className="flex items-center gap-3 [&_img]:rounded-full">
-											<img src={avatarSrc} alt={CONTACT.name} className="size-10 rounded-full object-cover" />
+											<img src={avatarSrc} alt={CONTACT.name} className="size-10 rounded-full object-cover shadow-sm" />
 											<div className="flex flex-col min-w-0">
 												<span className="font-semibold text-sm tracking-tight text-fg truncate">
 													{liveGithubProfile?.name || itemHandle}
@@ -361,7 +363,7 @@ export default function Contacts({
 									<div className="w-[min(270px,calc(100vw-3rem))] flex flex-col relative overflow-hidden rounded-xl">
 										<div className="h-16 w-full bg-linear-to-br from-[#0A66C2] via-[#0A66C2]/80 to-[#0A66C2]/30" />
 										<div className="bg-surface absolute left-3.5 top-16 -translate-y-1/2 rounded-full p-0.5 shadow-lg [&_img]:size-14 [&_img]:rounded-full z-20">
-											<img src={avatarSrc} alt={CONTACT.name} className="size-14 rounded-full object-cover" />
+											<img src={avatarSrc} alt={CONTACT.name} className="size-14 rounded-full object-cover shadow-md" />
 										</div>
 										<div className="flex flex-col gap-1 p-3.5 pt-8">
 											<span className="font-semibold text-sm text-fg">
@@ -391,10 +393,20 @@ export default function Contacts({
 										<img
 											className="h-24 w-full object-cover"
 											src={liveXProfile?.bannerUrl || '/banner.jpg'}
-											alt=""
+											alt="X Banner"
+											onError={(e) => {
+												(e.target as HTMLImageElement).src = '/banner.jpg';
+											}}
 										/>
 										<div className="bg-surface absolute left-3.5 top-24 -translate-y-1/2 rounded-full p-0.5 shadow-lg [&_img]:size-14 [&_img]:rounded-full z-20">
-											<img src={avatarSrc} alt={CONTACT.name} className="size-14 rounded-full object-cover" />
+											<img
+												src={avatarSrc}
+												alt={liveXProfile?.name || CONTACT.name}
+												className="size-14 rounded-full object-cover shadow-md"
+												onError={(e) => {
+													(e.target as HTMLImageElement).src = '/avatar.jpg';
+												}}
+											/>
 										</div>
 										<div className="flex flex-col p-3.5">
 											<div className="flex justify-between items-start">
@@ -424,13 +436,13 @@ export default function Contacts({
 								{activeItem.key !== 'github' && activeItem.key !== 'linkedin' && activeItem.key !== 'x' && (
 									<div className="flex flex-col gap-3 p-4 w-[min(280px,calc(100vw-3rem))]">
 										<div className="flex items-center gap-3">
-											<div className="size-11 rounded-xl bg-white/10 border border-white/15 flex items-center justify-center p-2 shrink-0 shadow-inner">
+											<div className="size-11 rounded-full bg-white/10 border border-white/15 flex items-center justify-center p-0.5 shrink-0 shadow-inner overflow-hidden">
 												<img
-													src={`https://www.google.com/s2/favicons?domain=${domainHost}&sz=64`}
+													src={avatarSrc}
 													alt={activeItem.label}
-													className="size-6 rounded-md object-contain"
+													className="size-10 rounded-full object-cover"
 													onError={(e) => {
-														(e.target as HTMLElement).style.display = 'none';
+														(e.target as HTMLImageElement).src = `https://www.google.com/s2/favicons?domain=${domainHost}&sz=64`;
 													}}
 												/>
 											</div>

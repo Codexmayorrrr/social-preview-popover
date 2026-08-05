@@ -1,18 +1,51 @@
 const DEFAULT_AVATAR = '/avatar.jpg';
 const DEFAULT_BANNER = '/banner.jpg';
 
+export function extractDomain(url: string): string {
+	try {
+		const parsed = new URL(url.startsWith('http') ? url : `https://${url}`);
+		return parsed.hostname.replace('www.', '');
+	} catch (e) {
+		return url;
+	}
+}
+
 export function parseUsernameFromUrl(url: string, platformKey: string): string {
 	try {
 		const parsed = new URL(url.startsWith('http') ? url : `https://${url}`);
 		const parts = parsed.pathname.split('/').filter(Boolean);
 		if (parts.length > 0) {
-			const clean = parts[0].replace('@', '');
-			if (clean) return clean;
+			const clean = parts[0].replace('@', '').replace('in/', '').replace('u/', '');
+			if (clean && clean !== 'home' && clean !== 'explore') return clean;
 		}
 	} catch (e) {
 		console.error('Error parsing username from URL:', e);
 	}
 	return platformKey;
+}
+
+export function getSocialAvatarUrl(platformKey: string, handle: string, url: string): string {
+	const cleanHandle = handle.replace(/^@/, '');
+	if (platformKey === 'x' || platformKey === 'twitter') {
+		return `https://unavatar.io/twitter/${cleanHandle}`;
+	}
+	if (platformKey === 'github') {
+		return `https://unavatar.io/github/${cleanHandle}`;
+	}
+	if (platformKey === 'youtube') {
+		return `https://unavatar.io/youtube/${cleanHandle}`;
+	}
+	if (platformKey === 'instagram') {
+		return `https://unavatar.io/instagram/${cleanHandle}`;
+	}
+	if (platformKey === 'substack') {
+		return `https://unavatar.io/substack/${cleanHandle}`;
+	}
+	if (platformKey === 'tiktok') {
+		return `https://unavatar.io/tiktok/${cleanHandle}`;
+	}
+	const domain = extractDomain(url);
+	return `https://unavatar.io/${domain}?fallback=${encodeURIComponent(DEFAULT_AVATAR)}`;
 }
 
 export async function getGithubProfile(username: string) {
@@ -27,7 +60,7 @@ export async function getGithubProfile(username: string) {
 				login: data.login || cleanUser,
 				bio: data.bio || 'Developer & Creator',
 				location: data.location || 'Remote',
-				avatarUrl: data.avatar_url || DEFAULT_AVATAR,
+				avatarUrl: data.avatar_url || `https://unavatar.io/github/${cleanUser}`,
 				publicRepos: data.public_repos || 0,
 				followers: data.followers || 0,
 			};
@@ -40,7 +73,7 @@ export async function getGithubProfile(username: string) {
 		login: cleanUser,
 		bio: 'Developer & Creator',
 		location: 'Remote',
-		avatarUrl: DEFAULT_AVATAR,
+		avatarUrl: `https://unavatar.io/github/${cleanUser}`,
 		publicRepos: 12,
 		followers: 120,
 	};
@@ -55,14 +88,20 @@ export async function getXProfile(handle: string) {
 		});
 		if (res.ok) {
 			const data = await res.json();
+			const avatar = data.avatar_url || data.profile_image_url_https;
+			const highResAvatar = avatar
+				? avatar.replace('_normal.jpg', '_400x400.jpg').replace('_normal.png', '_400x400.png')
+				: `https://unavatar.io/twitter/${cleanHandle}`;
+			const banner = data.banner_url || data.profile_banner_url || DEFAULT_BANNER;
+
 			return {
 				name: data.name || cleanHandle,
 				handle: `@${data.screen_name || cleanHandle}`,
 				bio: data.description || 'Creator & Builder',
 				followers: data.followers_count ?? 150,
 				following: data.following_count ?? 200,
-				avatarUrl: data.avatar_url || DEFAULT_AVATAR,
-				bannerUrl: data.banner_url || DEFAULT_BANNER,
+				avatarUrl: highResAvatar,
+				bannerUrl: banner,
 			};
 		}
 	} catch (e) {
@@ -74,7 +113,7 @@ export async function getXProfile(handle: string) {
 		bio: 'Creator & Builder',
 		followers: 150,
 		following: 200,
-		avatarUrl: DEFAULT_AVATAR,
+		avatarUrl: `https://unavatar.io/twitter/${cleanHandle}`,
 		bannerUrl: DEFAULT_BANNER,
 	};
 }
