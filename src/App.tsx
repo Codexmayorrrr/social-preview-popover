@@ -6,8 +6,6 @@ import { getGithubContributions, type Contributions } from './utils/github-contr
 import {
 	supabase,
 	getProfileByHandle,
-	signInWithGoogle,
-	signOutUser,
 	getCurrentUser,
 	syncUserAndLinksToDatabase,
 } from './utils/supabase';
@@ -151,7 +149,7 @@ export default function App() {
 	const [githubProfile, setGithubProfile] = useState<any>(null);
 	const [xProfile, setXProfile] = useState<any>(null);
 
-	// Fetch live Supabase profile data on load
+	// Fetch live Supabase profile data silently in the background
 	useEffect(() => {
 		async function fetchFromSupabase() {
 			const dbProfile = await getProfileByHandle(userHandle);
@@ -167,7 +165,7 @@ export default function App() {
 		fetchFromSupabase();
 	}, [userHandle]);
 
-	// Supabase Auth Listener
+	// Supabase Auth & Silent Background Database Sync
 	useEffect(() => {
 		getCurrentUser().then((user) => setAuthUser(user));
 
@@ -184,7 +182,7 @@ export default function App() {
 		};
 	}, [userHandle, bioData, allUserItems]);
 
-	// Persist bioData & activeItems per user handle
+	// Persist bioData & activeItems per user handle (Local & Silent DB Sync)
 	useEffect(() => {
 		if (typeof window !== 'undefined') {
 			localStorage.setItem(`dock_bio_data_${userHandle}`, JSON.stringify(bioData));
@@ -307,19 +305,6 @@ export default function App() {
 		setIsBioModalOpen(false);
 	}
 
-	async function handleGoogleLogin() {
-		try {
-			await signInWithGoogle();
-		} catch (e) {
-			console.error('Google Sign In Error:', e);
-		}
-	}
-
-	async function handleSignOut() {
-		await signOutUser();
-		setAuthUser(null);
-	}
-
 	// Uncluttered Onboarding View (/join or ?join=true)
 	if (isLandingPage) {
 		return (
@@ -366,39 +351,15 @@ export default function App() {
 
 	return (
 		<main className="min-h-screen bg-stone-950 text-stone-100 flex flex-col items-center justify-between p-6 sm:p-12 font-sans antialiased relative">
-			{/* Single App Wrapper Header */}
+			{/* Pure Minimalist Header - NO DB Buttons or Badges */}
 			<header className="w-full max-w-xl flex items-center justify-between z-20 gap-2 flex-wrap">
-				<div className="flex items-center gap-2">
-					<span className="text-xs font-serif italic text-stone-500 tracking-wider">
-						dock.bio/@{userHandle}
-					</span>
-					{authUser && (
-						<span className="text-[10px] bg-emerald-500/20 text-emerald-300 px-2 py-0.5 rounded-full border border-emerald-500/30 font-mono">
-							DB Synced ✨
-						</span>
-					)}
-				</div>
+				<span className="text-xs font-serif italic text-stone-500 tracking-wider">
+					dock.bio/@{userHandle}
+				</span>
 
 				{isAdminMode && (
 					/* Admin Mode Controls */
 					<div className="flex items-center gap-2">
-						{/* Google Auth Button / Status */}
-						{authUser ? (
-							<button
-								onClick={handleSignOut}
-								className="px-3 py-1.5 rounded-full bg-white/5 hover:bg-white/15 border border-white/10 text-stone-400 hover:text-white transition-all text-xs"
-							>
-								Sign Out
-							</button>
-						) : (
-							<button
-								onClick={handleGoogleLogin}
-								className="px-3 py-1.5 rounded-full bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/30 text-emerald-300 font-medium transition-all text-xs flex items-center gap-1"
-							>
-								<span>🌐</span> Save to DB
-							</button>
-						)}
-
 						{/* Preset sort filter bar */}
 						{allUserItems.length > 0 && (
 							<div className="flex items-center gap-1.5 bg-stone-900/80 p-1 rounded-full border border-white/10 text-xs">
