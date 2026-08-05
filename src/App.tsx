@@ -437,11 +437,7 @@ export default function App() {
 	return (
 		<main className="min-h-screen bg-stone-950 text-stone-100 flex flex-col items-center justify-between p-6 sm:p-12 font-sans antialiased relative">
 			{/* Pure Minimalist Header */}
-			<header className="w-full max-w-xl flex items-center justify-between z-20 gap-2 flex-wrap">
-				<span className="text-xs font-serif italic text-stone-500 tracking-wider">
-					dock.bio/@{userHandle}
-				</span>
-
+			<header className="w-full max-w-xl flex items-center justify-end z-20 gap-2 flex-wrap">
 				{isAdminMode && (
 					/* Admin Mode Controls */
 					<div className="flex items-center gap-2">
