@@ -45,11 +45,11 @@ export async function getProfileByHandle(handle: string) {
  * Universal Google 1-Click Sign-In
  */
 export async function signInWithGoogle() {
-	const redirectTo = typeof window !== 'undefined' ? window.location.href : 'http://localhost:5050';
+	const currentOrigin = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:5050';
 	const { data, error } = await supabase.auth.signInWithOAuth({
 		provider: 'google',
 		options: {
-			redirectTo,
+			redirectTo: `${currentOrigin}/join`,
 		},
 	});
 	if (error) throw error;
