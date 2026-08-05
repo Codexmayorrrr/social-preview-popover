@@ -10,6 +10,16 @@ import {
 	signInWithGoogle,
 	syncUserAndLinksToDatabase,
 } from './utils/supabase';
+import {
+	EditIcon,
+	PlusIcon,
+	ArrowRightIcon,
+	ComputerIcon,
+	VideoIcon,
+	PaletteIcon,
+	WritingIcon,
+	MicIcon,
+} from './components/Hugeicons';
 
 export interface UserBioData {
 	displayName: string;
@@ -47,11 +57,11 @@ const defaultNewUserBio: UserBioData = {
 };
 
 const ROLE_TEMPLATES = [
-	{ label: '💻 Design Engineer', role: 'Design Engineer', specialties: 'UI engineering, micro-interactions, and motion physics' },
-	{ label: '🎥 Tech Creator', role: 'Tech Creator & YouTuber', specialties: 'video essays, gadget reviews, and motion design' },
-	{ label: '🎨 UI/UX Designer', role: 'UI/UX Designer', specialties: 'design systems, product design, and web interfaces' },
-	{ label: '✍️ Substack Writer', role: 'Substack Writer', specialties: 'tech analysis, newsletters, and long-form essays' },
-	{ label: '🎙️ Podcast Host', role: 'Podcast Host', specialties: 'interviews, tech news, and audio storytelling' },
+	{ label: 'Design Engineer', icon: ComputerIcon, role: 'Design Engineer', specialties: 'UI engineering, micro-interactions, and motion physics' },
+	{ label: 'Tech Creator', icon: VideoIcon, role: 'Tech Creator & YouTuber', specialties: 'video essays, gadget reviews, and motion design' },
+	{ label: 'UI/UX Designer', icon: PaletteIcon, role: 'UI/UX Designer', specialties: 'design systems, product design, and web interfaces' },
+	{ label: 'Substack Writer', icon: WritingIcon, role: 'Substack Writer', specialties: 'tech analysis, newsletters, and long-form essays' },
+	{ label: 'Podcast Host', icon: MicIcon, role: 'Podcast Host', specialties: 'interviews, tech news, and audio storytelling' },
 ];
 
 function getUserHandleFromUrl(): string {
@@ -267,7 +277,7 @@ export default function App() {
 			localStorage.setItem(`dock_bio_data_${cleaned}`, JSON.stringify(initialBio));
 			localStorage.setItem('pending_claim_handle', cleaned);
 
-			// Connect 1-Click Google OAuth directly to Claim button!
+			// Connect 1-Click Google OAuth directly to Claim & Launch button!
 			try {
 				await signInWithGoogle();
 			} catch (err) {
@@ -357,9 +367,10 @@ export default function App() {
 
 						<button
 							type="submit"
-							className="w-full sm:w-auto px-6 py-3 rounded-xl bg-stone-100 hover:bg-white text-stone-900 font-semibold text-xs transition-colors shrink-0 shadow-lg"
+							className="w-full sm:w-auto px-6 py-3 rounded-xl bg-stone-100 hover:bg-white text-stone-900 font-semibold text-xs transition-colors shrink-0 shadow-lg flex items-center justify-center gap-1.5"
 						>
-							Claim →
+							<span>Claim & Launch</span>
+							<ArrowRightIcon className="w-3.5 h-3.5 text-stone-900" />
 						</button>
 					</form>
 				</section>
@@ -369,7 +380,7 @@ export default function App() {
 
 	return (
 		<main className="min-h-screen bg-stone-950 text-stone-100 flex flex-col items-center justify-between p-6 sm:p-12 font-sans antialiased relative">
-			{/* Pure Minimalist Header - Crisp One-Word CTAs */}
+			{/* Pure Minimalist Header - Hugeicons & Explicit Labels */}
 			<header className="w-full max-w-xl flex items-center justify-between z-20 gap-2 flex-wrap">
 				<span className="text-xs font-serif italic text-stone-500 tracking-wider">
 					dock.bio/@{userHandle}
@@ -410,16 +421,18 @@ export default function App() {
 
 						<button
 							onClick={() => setIsBioModalOpen(true)}
-							className="px-3.5 py-1.5 rounded-full bg-white/10 hover:bg-white/20 transition-all text-xs font-medium text-white border border-white/15 flex items-center gap-1 shadow-md"
+							className="px-3.5 py-1.5 rounded-full bg-white/10 hover:bg-white/20 transition-all text-xs font-medium text-white border border-white/15 flex items-center gap-1.5 shadow-md"
 						>
-							<span>✏️</span> Bio
+							<EditIcon className="w-3.5 h-3.5 text-stone-300" />
+							<span>Edit Bio</span>
 						</button>
 
 						<button
 							onClick={() => setIsAddModalOpen(true)}
-							className="px-3.5 py-1.5 rounded-full bg-stone-100 text-stone-900 hover:bg-white transition-all text-xs font-medium flex items-center gap-1 shadow-md"
+							className="px-3.5 py-1.5 rounded-full bg-stone-100 text-stone-900 hover:bg-white transition-all text-xs font-medium flex items-center gap-1.5 shadow-md"
 						>
-							<span>+</span> Add
+							<PlusIcon className="w-3.5 h-3.5 text-stone-900" />
+							<span>Add Social</span>
 						</button>
 					</div>
 				)}
@@ -449,7 +462,7 @@ export default function App() {
 				{allUserItems.length === 0 && isAdminMode && (
 					<div className="mt-4 p-4 rounded-2xl bg-stone-900/60 border border-white/10 text-stone-400 text-xs flex flex-col gap-2">
 						<span className="text-stone-200 font-medium">Your Liquid Dock is empty</span>
-						<p>Click <strong className="text-white">+ Add</strong> in the top header to add your first social media link and build your dock.</p>
+						<p>Click <strong className="text-white">Add Social</strong> in the top header to add your first social media link and build your dock.</p>
 					</div>
 				)}
 			</section>
@@ -489,19 +502,23 @@ export default function App() {
 							</button>
 						</div>
 
-						{/* Option 2: Quick Template Role Chips */}
+						{/* Option 2: Quick Template Role Chips with Hugeicons */}
 						<div className="flex flex-col gap-2">
 							<span className="text-[11px] text-stone-500 font-medium uppercase tracking-wider">Quick Role Templates</span>
 							<div className="flex flex-wrap gap-1.5">
-								{ROLE_TEMPLATES.map((t, idx) => (
-									<button
-										key={idx}
-										onClick={() => applyRoleTemplate(t)}
-										className="text-xs px-2.5 py-1 rounded-full bg-white/5 hover:bg-white/15 border border-white/10 text-stone-300 transition-colors"
-									>
-										{t.label}
-									</button>
-								))}
+								{ROLE_TEMPLATES.map((t, idx) => {
+									const IconComp = t.icon;
+									return (
+										<button
+											key={idx}
+											onClick={() => applyRoleTemplate(t)}
+											className="text-xs px-3 py-1.5 rounded-full bg-white/5 hover:bg-white/15 border border-white/10 text-stone-300 transition-colors flex items-center gap-1.5"
+										>
+											<IconComp className="w-3.5 h-3.5 text-stone-400" />
+											<span>{t.label}</span>
+										</button>
+									);
+								})}
 							</div>
 						</div>
 
@@ -565,7 +582,7 @@ export default function App() {
 							onClick={handleSaveBio}
 							className="w-full py-2.5 rounded-xl bg-stone-100 text-stone-900 font-medium text-xs hover:bg-white transition-colors mt-1"
 						>
-							Save →
+							Save Bio & Continue →
 						</button>
 					</div>
 				</div>
@@ -603,9 +620,10 @@ export default function App() {
 							<div className="flex items-center gap-2 pt-1">
 								<button
 									type="submit"
-									className="flex-1 py-2.5 rounded-xl bg-stone-100 text-stone-900 font-medium text-xs hover:bg-white transition-colors"
+									className="flex-1 py-2.5 rounded-xl bg-stone-100 text-stone-900 font-medium text-xs hover:bg-white transition-colors flex items-center justify-center gap-1"
 								>
-									Add
+									<PlusIcon className="w-3.5 h-3.5 text-stone-900" />
+									<span>Add to Dock</span>
 								</button>
 								<button
 									type="button"
