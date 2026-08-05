@@ -173,19 +173,8 @@ export default function Contacts({
 		}));
 	}
 
-	function handleHover(event: React.PointerEvent<HTMLAnchorElement>, index: number) {
-		if (event.pointerType !== 'mouse') return;
+	function handleMouseEnter(event: React.MouseEvent<HTMLAnchorElement>, index: number) {
 		openForIndex(event.currentTarget, index);
-	}
-
-	function handleClick(event: React.MouseEvent<HTMLAnchorElement>, index: number) {
-		const isTouch = !window.matchMedia('(hover: hover)').matches || event.nativeEvent.type === 'touchstart';
-		if (isTouch) {
-			if (!open || contentIndex !== index) {
-				event.preventDefault();
-				openForIndex(event.currentTarget, index);
-			}
-		}
 	}
 
 	useEffect(() => {
@@ -240,12 +229,8 @@ export default function Contacts({
 		<motion.div
 			ref={dockRef}
 			layout
-			className="contacts-dock relative flex items-center gap-1.5 p-1.5 rounded-full bg-white/10 dark:bg-stone-900/60 backdrop-blur-2xl border border-white/20 dark:border-white/10 shadow-[0_10px_35px_-5px_rgba(0,0,0,0.35)] transition-colors duration-300 touch-none select-none"
-			onMouseLeave={() => {
-				if (window.matchMedia('(hover: hover)').matches) {
-					setOpen(false);
-				}
-			}}
+			className="contacts-dock relative flex items-center gap-1.5 p-1.5 rounded-full bg-white/10 dark:bg-stone-900/60 backdrop-blur-2xl border border-white/20 dark:border-white/10 shadow-[0_10px_35px_-5px_rgba(0,0,0,0.35)] transition-colors duration-300 select-none"
+			onMouseLeave={() => setOpen(false)}
 			role="presentation"
 		>
 			{items.map((item, index) => {
@@ -263,8 +248,8 @@ export default function Contacts({
 							isActive ? 'text-fg' : 'text-muted hover:text-fg'
 						}`}
 						aria-label={item.label}
-						onPointerEnter={(e) => handleHover(e, index)}
-						onClick={(e) => handleClick(e, index)}
+						onMouseEnter={(e) => handleMouseEnter(e, index)}
+						onPointerEnter={(e) => openForIndex(e.currentTarget, index)}
 					>
 						{isActive && (
 							<motion.div
@@ -354,17 +339,16 @@ export default function Contacts({
 			<AnimatePresence>
 				{open && activeItem && (
 					<motion.div
-						initial={{ opacity: 0, scale: 0.95 }}
+						initial={{ opacity: 0, y: 10, scale: 0.95 }}
 						animate={{
 							opacity: 1,
+							y: 0,
 							scale: 1,
 							left: `${popupDimensions.left}px`,
-							width: popupDimensions.width > 0 ? `${popupDimensions.width}px` : 'auto',
-							height: popupDimensions.height > 0 ? `${popupDimensions.height}px` : 'auto',
 						}}
-						exit={{ opacity: 0, scale: 0.95 }}
+						exit={{ opacity: 0, y: 10, scale: 0.95 }}
 						transition={{ type: 'spring', stiffness: 380, damping: 30 }}
-						className="squircle-sm border border-white/20 dark:border-white/15 bg-white/10 dark:bg-stone-900/50 backdrop-blur-3xl absolute bottom-[calc(100%+0.85rem)] flex -translate-x-1/2 items-end overflow-hidden shadow-[0_25px_60px_-15px_rgba(0,0,0,0.6),0_0_20px_rgba(255,255,255,0.05)] z-50 transition-shadow duration-300 max-w-[calc(100vw-1.5rem)] min-w-[220px] min-h-[90px]"
+						className="squircle-sm border border-white/20 dark:border-white/15 bg-white/10 dark:bg-stone-900/50 backdrop-blur-3xl absolute bottom-[calc(100%+0.85rem)] flex -translate-x-1/2 items-end overflow-hidden shadow-[0_25px_60px_-15px_rgba(0,0,0,0.6),0_0_20px_rgba(255,255,255,0.05)] z-50 transition-all duration-300 min-w-[220px]"
 					>
 						<div className="absolute inset-x-0 top-0 h-[1px] bg-linear-to-r from-transparent via-white/40 to-transparent z-30 pointer-events-none" />
 						<div className="absolute inset-0 bg-linear-to-b from-white/12 via-white/4 to-transparent pointer-events-none z-20" />
@@ -514,7 +498,7 @@ export default function Contacts({
 				)}
 			</AnimatePresence>
 
-			<div className="absolute inset-0 -top-3" />
+			<div className="absolute inset-0 -top-3 pointer-events-none" />
 		</motion.div>
 	);
 }
