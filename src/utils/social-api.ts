@@ -84,7 +84,7 @@ export async function getXProfile(handle: string) {
 	const cleanHandle = handle.replace(/^@/, '');
 	try {
 		const res = await fetch(`https://api.vxtwitter.com/${cleanHandle}`, {
-			signal: AbortSignal.timeout(3500),
+			signal: AbortSignal.timeout(4000),
 		});
 		if (res.ok) {
 			const data = await res.json();
@@ -92,7 +92,12 @@ export async function getXProfile(handle: string) {
 			const highResAvatar = avatar
 				? avatar.replace('_normal.jpg', '_400x400.jpg').replace('_normal.png', '_400x400.png')
 				: `https://unavatar.io/twitter/${cleanHandle}`;
-			const banner = data.banner_url || data.profile_banner_url || DEFAULT_BANNER;
+
+			let rawBanner = data.banner_url || data.profile_banner_url;
+			if (rawBanner && !rawBanner.match(/\/(600x200|1500x500|1080x360|mobile_retina)$/)) {
+				rawBanner = `${rawBanner.replace(/\/$/, '')}/600x200`;
+			}
+			const banner = rawBanner || DEFAULT_BANNER;
 
 			return {
 				name: data.name || cleanHandle,
@@ -107,6 +112,7 @@ export async function getXProfile(handle: string) {
 	} catch (e) {
 		console.error('Error fetching X profile from vxtwitter:', e);
 	}
+
 	return {
 		name: cleanHandle,
 		handle: `@${cleanHandle}`,

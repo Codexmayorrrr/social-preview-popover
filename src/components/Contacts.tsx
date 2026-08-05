@@ -390,19 +390,21 @@ export default function Contacts({
 
 								{activeItem.key === 'x' && (
 									<div className="w-[min(270px,calc(100vw-3rem))] flex flex-col relative overflow-hidden rounded-xl">
-										<img
-											className="h-24 w-full object-cover"
-											src={liveXProfile?.bannerUrl || '/banner.jpg'}
-											alt="X Banner"
-											onError={(e) => {
-												(e.target as HTMLImageElement).src = '/banner.jpg';
-											}}
-										/>
+										<div className="h-24 w-full relative bg-linear-to-r from-stone-900 via-stone-800 to-black overflow-hidden">
+											<img
+												className="h-24 w-full object-cover"
+												src={liveXProfile?.bannerUrl || 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=600&q=80'}
+												alt="X Banner"
+												onError={(e) => {
+													(e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=600&q=80';
+												}}
+											/>
+										</div>
 										<div className="bg-surface absolute left-3.5 top-24 -translate-y-1/2 rounded-full p-0.5 shadow-lg [&_img]:size-14 [&_img]:rounded-full z-20">
 											<img
 												src={avatarSrc}
 												alt={liveXProfile?.name || CONTACT.name}
-												className="size-14 rounded-full object-cover shadow-md"
+												className="size-14 rounded-full object-cover shadow-md ring-2 ring-white/10"
 												onError={(e) => {
 													(e.target as HTMLImageElement).src = '/avatar.jpg';
 												}}
