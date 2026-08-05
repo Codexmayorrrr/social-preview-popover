@@ -1,8 +1,10 @@
-import React, { useState, useRef, useLayoutEffect, useEffect, useMemo } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { CONTACT } from '../config';
 import GithubGraph from './GithubGraph';
 import type { Contributions } from '../utils/github-contributions';
+import { getGithubProfile, getXProfile, parseUsernameFromUrl } from '../utils/social-api';
+import { getGithubContributions } from '../utils/github-contributions';
 
 export type PlatformKey =
 	| 'github'
@@ -103,7 +105,6 @@ const defaultItems: PlatformItem[] = [
 
 export default function Contacts({
 	items = defaultItems,
-	contributions = { total: 0, start: '', levels: '', counts: [] },
 	contributionsLabel = '142 contributions in 2026',
 	labels = {
 		linkedinHeadline: 'Design Engineer',
@@ -114,22 +115,23 @@ export default function Contacts({
 		maltLocation: 'Remote',
 		xCta: 'Follow',
 	},
-	githubProfile = {},
-	xProfile = {},
-	youtubeProfile = {},
 }: ContactsProps) {
 	const [open, setOpen] = useState(false);
 	const [contentIndex, setContentIndex] = useState(0);
 	const [prevContentIndex, setPrevContentIndex] = useState(0);
-	const [popupDimensions, setPopupDimensions] = useState<{ width: number; height: number; left: number }>({
-		width: 0,
-		height: 0,
-		left: 0,
+	const [popupLeft, setPopupLeft] = useState(0);
+
+	// Live Profile States fetched directly from active links!
+	const [liveGithubProfile, setLiveGithubProfile] = useState<any>(null);
+	const [liveGithubContribs, setLiveGithubContribs] = useState<Contributions>({
+		total: 120,
+		start: new Date().toISOString().slice(0, 10),
+		levels: '0'.repeat(364),
+		counts: Array(364).fill(0),
 	});
+	const [liveXProfile, setLiveXProfile] = useState<any>(null);
 
 	const dockRef = useRef<HTMLDivElement>(null);
-	const popupElementRef = useRef<HTMLDivElement>(null);
-	const activeIconLeftRef = useRef<number>(0);
 
 	const safeIndex = Math.min(contentIndex, items.length - 1);
 	const activeItem = items[safeIndex] || items[0];
@@ -139,13 +141,27 @@ export default function Contacts({
 		[contentIndex, prevContentIndex],
 	);
 
+	// Dynamically fetch profile information directly from active link!
+	useEffect(() => {
+		if (!activeItem) return;
+
+		const handle = parseUsernameFromUrl(activeItem.url, activeItem.key);
+
+		if (activeItem.key === 'github') {
+			getGithubProfile(handle).then(setLiveGithubProfile);
+			getGithubContributions(handle).then(setLiveGithubContribs);
+		} else if (activeItem.key === 'x') {
+			getXProfile(handle).then(setLiveXProfile);
+		}
+	}, [activeItem]);
+
 	const avatarSrc = useMemo(
-		() => xProfile?.avatarUrl || githubProfile?.avatarUrl || youtubeProfile?.avatarUrl || '/avatar.jpg',
-		[xProfile, githubProfile, youtubeProfile],
+		() => liveXProfile?.avatarUrl || liveGithubProfile?.avatarUrl || '/avatar.jpg',
+		[liveXProfile, liveGithubProfile],
 	);
 
-	function calculateClampedLeft(rawLeft: number, cardWidth: number) {
-		if (!dockRef.current || cardWidth === 0) return rawLeft;
+	function calculateClampedLeft(rawLeft: number, cardWidth: number = 280) {
+		if (!dockRef.current) return rawLeft;
 		const dockRect = dockRef.current.getBoundingClientRect();
 		const viewportWidth = window.innerWidth;
 		const margin = 12;
@@ -163,18 +179,11 @@ export default function Contacts({
 
 	function openForIndex(node: HTMLElement, index: number) {
 		const nextLeft = node.offsetLeft + node.offsetWidth / 2;
-		activeIconLeftRef.current = nextLeft;
-		setOpen(true);
+		const clampedLeft = calculateClampedLeft(nextLeft, 280);
+		setPopupLeft(clampedLeft);
 		setPrevContentIndex(contentIndex);
 		setContentIndex(index);
-		setPopupDimensions((prev) => ({
-			...prev,
-			left: calculateClampedLeft(nextLeft, prev.width),
-		}));
-	}
-
-	function handleMouseEnter(event: React.MouseEvent<HTMLAnchorElement>, index: number) {
-		openForIndex(event.currentTarget, index);
+		setOpen(true);
 	}
 
 	useEffect(() => {
@@ -192,36 +201,6 @@ export default function Contacts({
 		};
 	}, [open]);
 
-	useLayoutEffect(() => {
-		if (!open || !popupElementRef.current) return;
-
-		const updateDimensions = () => {
-			if (popupElementRef.current) {
-				const rect = popupElementRef.current.getBoundingClientRect();
-				const width = Math.round(rect.width);
-				const height = Math.round(rect.height);
-				const clamped = calculateClampedLeft(activeIconLeftRef.current, width);
-
-				setPopupDimensions({
-					width,
-					height,
-					left: clamped,
-				});
-			}
-		};
-
-		updateDimensions();
-
-		const resizeObserver = new ResizeObserver(updateDimensions);
-		resizeObserver.observe(popupElementRef.current);
-		window.addEventListener('resize', updateDimensions);
-
-		return () => {
-			resizeObserver.disconnect();
-			window.removeEventListener('resize', updateDimensions);
-		};
-	}, [open, contentIndex]);
-
 	const domainHost = activeItem ? extractDomain(activeItem.url) : '';
 	const itemHandle = activeItem ? extractHandle(activeItem.url) : '';
 
@@ -234,7 +213,7 @@ export default function Contacts({
 			role="presentation"
 		>
 			{items.map((item, index) => {
-				const isActive = open && contentIndex === index;
+				const isActive = open && safeIndex === index;
 				const domain = extractDomain(item.url);
 				const faviconUrl = `https://www.google.com/s2/favicons?domain=${domain}&sz=64`;
 
@@ -248,8 +227,7 @@ export default function Contacts({
 							isActive ? 'text-fg' : 'text-muted hover:text-fg'
 						}`}
 						aria-label={item.label}
-						onMouseEnter={(e) => handleMouseEnter(e, index)}
-						onPointerEnter={(e) => openForIndex(e.currentTarget, index)}
+						onMouseEnter={(e) => openForIndex(e.currentTarget, index)}
 					>
 						{isActive && (
 							<motion.div
@@ -339,16 +317,16 @@ export default function Contacts({
 			<AnimatePresence>
 				{open && activeItem && (
 					<motion.div
-						initial={{ opacity: 0, y: 10, scale: 0.95 }}
+						initial={{ opacity: 0, y: 8, scale: 0.96 }}
 						animate={{
 							opacity: 1,
 							y: 0,
 							scale: 1,
-							left: `${popupDimensions.left}px`,
 						}}
-						exit={{ opacity: 0, y: 10, scale: 0.95 }}
-						transition={{ type: 'spring', stiffness: 380, damping: 30 }}
-						className="squircle-sm border border-white/20 dark:border-white/15 bg-white/10 dark:bg-stone-900/50 backdrop-blur-3xl absolute bottom-[calc(100%+0.85rem)] flex -translate-x-1/2 items-end overflow-hidden shadow-[0_25px_60px_-15px_rgba(0,0,0,0.6),0_0_20px_rgba(255,255,255,0.05)] z-50 transition-all duration-300 min-w-[220px]"
+						exit={{ opacity: 0, y: 8, scale: 0.96 }}
+						transition={{ type: 'spring', stiffness: 450, damping: 32 }}
+						style={{ left: `${popupLeft}px` }}
+						className="squircle-sm border border-white/20 dark:border-white/15 bg-white/10 dark:bg-stone-900/50 backdrop-blur-3xl absolute bottom-[calc(100%+0.85rem)] flex -translate-x-1/2 items-end overflow-hidden shadow-[0_25px_60px_-15px_rgba(0,0,0,0.6)] z-50 select-none pointer-events-auto"
 					>
 						<div className="absolute inset-x-0 top-0 h-[1px] bg-linear-to-r from-transparent via-white/40 to-transparent z-30 pointer-events-none" />
 						<div className="absolute inset-0 bg-linear-to-b from-white/12 via-white/4 to-transparent pointer-events-none z-20" />
@@ -356,12 +334,11 @@ export default function Contacts({
 						<AnimatePresence mode="wait" initial={false}>
 							<motion.div
 								key={`${activeItem.key}-${activeItem.url}`}
-								ref={popupElementRef}
-								initial={{ x: 220 * direction, opacity: 0, filter: 'blur(4px)' }}
+								initial={{ x: 180 * direction, opacity: 0, filter: 'blur(4px)' }}
 								animate={{ x: 0, opacity: 1, filter: 'blur(0px)' }}
-								exit={{ x: -220 * direction, opacity: 0, filter: 'blur(4px)' }}
-								transition={{ type: 'spring', stiffness: 320, damping: 28 }}
-								className="relative z-10 w-max h-max max-w-[calc(100vw-2rem)] min-w-[220px]"
+								exit={{ x: -180 * direction, opacity: 0, filter: 'blur(4px)' }}
+								transition={{ type: 'spring', stiffness: 350, damping: 30 }}
+								className="relative z-10 w-max h-max max-w-[calc(100vw-2rem)] min-w-[240px]"
 							>
 								{activeItem.key === 'github' && (
 									<div className="flex flex-col gap-3 p-3.5 max-w-full overflow-hidden">
@@ -369,12 +346,14 @@ export default function Contacts({
 											<img src={avatarSrc} alt={CONTACT.name} className="size-10 rounded-full object-cover" />
 											<div className="flex flex-col min-w-0">
 												<span className="font-semibold text-sm tracking-tight text-fg truncate">
-													{githubProfile?.name || itemHandle}
+													{liveGithubProfile?.name || itemHandle}
 												</span>
-												<p className="text-muted text-xs truncate">{contributionsLabel}</p>
+												<p className="text-muted text-xs truncate">
+													{liveGithubContribs?.total || 120} contributions in 2026
+												</p>
 											</div>
 										</div>
-										<GithubGraph contributions={contributions} />
+										<GithubGraph contributions={liveGithubContribs} />
 									</div>
 								)}
 
@@ -411,18 +390,8 @@ export default function Contacts({
 									<div className="w-[min(270px,calc(100vw-3rem))] flex flex-col relative overflow-hidden rounded-xl">
 										<img
 											className="h-24 w-full object-cover"
-											src={xProfile?.bannerUrl || '/banner.jpg'}
+											src={liveXProfile?.bannerUrl || '/banner.jpg'}
 											alt=""
-											onLoad={() => {
-												if (popupElementRef.current) {
-													const rect = popupElementRef.current.getBoundingClientRect();
-													setPopupDimensions((prev) => ({
-														...prev,
-														width: Math.round(rect.width),
-														height: Math.round(rect.height),
-													}));
-												}
-											}}
 										/>
 										<div className="bg-surface absolute left-3.5 top-24 -translate-y-1/2 rounded-full p-0.5 shadow-lg [&_img]:size-14 [&_img]:rounded-full z-20">
 											<img src={avatarSrc} alt={CONTACT.name} className="size-14 rounded-full object-cover" />
@@ -431,9 +400,9 @@ export default function Contacts({
 											<div className="flex justify-between items-start">
 												<div className="flex flex-col mt-5 min-w-0 pr-2">
 													<span className="font-semibold text-sm text-fg truncate">
-														{xProfile?.name || itemHandle}
+														{liveXProfile?.name || itemHandle}
 													</span>
-													<span className="text-muted text-xs truncate">{itemHandle}</span>
+													<span className="text-muted text-xs truncate">{liveXProfile?.handle || itemHandle}</span>
 												</div>
 												<a
 													className="bg-fg text-bg hover:bg-fg/90 h-fit rounded-full px-3.5 py-1 text-xs font-semibold transition-all mt-5 shadow-md hover:scale-105 shrink-0"
@@ -444,11 +413,9 @@ export default function Contacts({
 													{labels?.xCta || 'Follow'}
 												</a>
 											</div>
-											{(xProfile?.bio || githubProfile?.bio) && (
-												<p className="text-muted text-xs mt-2.5 max-w-[240px] leading-relaxed">
-													{xProfile?.bio || githubProfile?.bio}
-												</p>
-											)}
+											<p className="text-muted text-xs mt-2.5 max-w-[240px] leading-relaxed">
+												{liveXProfile?.bio || 'Creator & Builder'}
+											</p>
 										</div>
 									</div>
 								)}
