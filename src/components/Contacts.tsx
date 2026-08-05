@@ -210,7 +210,7 @@ export default function Contacts({
 		<motion.div
 			ref={dockRef}
 			layout
-			className="contacts-dock relative flex items-center gap-1.5 p-1.5 rounded-full bg-white/10 dark:bg-stone-900/60 backdrop-blur-2xl border border-white/20 dark:border-white/10 shadow-[0_10px_35px_-5px_rgba(0,0,0,0.35)] transition-colors duration-300 select-none"
+			className="contacts-dock relative flex items-center gap-1.5 p-1.5 rounded-full bg-stone-900/80 backdrop-blur-2xl border border-white/20 shadow-[0_10px_35px_-5px_rgba(0,0,0,0.5)] transition-colors duration-300 select-none"
 			onMouseLeave={() => setOpen(false)}
 			role="presentation"
 		>
@@ -234,7 +234,7 @@ export default function Contacts({
 						{isActive && (
 							<motion.div
 								layoutId="dock-active-pill"
-								className="absolute inset-0 rounded-full bg-white/25 dark:bg-white/15 backdrop-blur-xl shadow-[0_4px_16px_rgba(255,255,255,0.2)] border border-white/30 dark:border-white/20 -z-10"
+								className="absolute inset-0 rounded-full bg-white/25 backdrop-blur-xl shadow-[0_4px_16px_rgba(255,255,255,0.2)] border border-white/30 -z-10"
 								transition={{ type: 'spring', stiffness: 400, damping: 30 }}
 							/>
 						)}
@@ -328,10 +328,10 @@ export default function Contacts({
 						exit={{ opacity: 0, y: 8, scale: 0.96 }}
 						transition={{ type: 'spring', stiffness: 450, damping: 32 }}
 						style={{ left: `${popupLeft}px` }}
-						className="squircle-sm border border-white/20 dark:border-white/15 bg-white/10 dark:bg-stone-900/50 backdrop-blur-3xl absolute bottom-[calc(100%+0.85rem)] flex -translate-x-1/2 items-end overflow-hidden shadow-[0_25px_60px_-15px_rgba(0,0,0,0.6)] z-50 select-none pointer-events-auto"
+						className="squircle-sm border border-white/20 bg-stone-950/95 backdrop-blur-3xl absolute bottom-[calc(100%+0.85rem)] flex -translate-x-1/2 items-end overflow-hidden shadow-[0_25px_60px_-15px_rgba(0,0,0,0.85),0_0_30px_rgba(0,0,0,0.5)] z-50 select-none pointer-events-auto"
 					>
 						<div className="absolute inset-x-0 top-0 h-[1px] bg-linear-to-r from-transparent via-white/40 to-transparent z-30 pointer-events-none" />
-						<div className="absolute inset-0 bg-linear-to-b from-white/12 via-white/4 to-transparent pointer-events-none z-20" />
+						<div className="absolute inset-0 bg-linear-to-b from-white/10 via-white/2 to-transparent pointer-events-none z-20" />
 
 						<AnimatePresence mode="wait" initial={false}>
 							<motion.div
