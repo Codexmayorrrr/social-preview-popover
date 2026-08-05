@@ -128,22 +128,33 @@ export async function getCurrentUser() {
 
 /**
  * Sync or Create User Profile and Bulk Save Links in Supabase
+ * ENFORCES STRICT 1 EMAIL = 1 HANDLE RULE
  */
 export async function syncUserAndLinksToDatabase(
 	authUser: any,
-	handle: string,
+	requestedHandle: string,
 	bioData: { displayName: string; role: string; location: string; workStyle: string; specialties: string },
 	items: any[]
 ) {
-	if (!authUser || !handle) return null;
+	if (!authUser) return null;
 
 	try {
-		// 1. Upsert User Record
+		// 1. Check if user already exists (by google_id or email)
+		const existingProfile = await getProfileByAuthUser(authUser);
+
+		// STRICT 1 EMAIL = 1 HANDLE RULE:
+		// If user already owns a handle in DB, preserve their primary registered handle!
+		const finalHandle = (existingProfile && existingProfile.handle)
+			? existingProfile.handle.toLowerCase()
+			: requestedHandle.toLowerCase().replace(/[^a-z0-9_-]/g, '');
+
+		if (!finalHandle) return null;
+
 		const userPayload = {
 			google_id: authUser.id,
 			email: authUser.email,
-			handle: handle.toLowerCase(),
-			display_name: bioData.displayName || `@${handle}`,
+			handle: finalHandle,
+			display_name: bioData.displayName || `@${finalHandle}`,
 			role: bioData.role || 'Creator & Builder',
 			location: bioData.location || 'Remote',
 			work_style: bioData.workStyle || 'remotely',

@@ -102,7 +102,7 @@ export default function App() {
 		return false;
 	});
 
-	// Real-time handle uniqueness validation
+	// Real-time handle uniqueness & email ownership validation
 	useEffect(() => {
 		const cleaned = claimInput.trim().toLowerCase().replace(/[^a-z0-9_-]/g, '');
 		if (!cleaned) {
@@ -114,14 +114,26 @@ export default function App() {
 		setHandleStatus('checking');
 
 		const timer = setTimeout(async () => {
+			// Check 1: Check if handle is taken in Supabase
 			const result = await checkHandleAvailability(cleaned, authUser?.id);
 			if (!result.available) {
 				setHandleStatus('taken');
 				setHandleErrorMsg(`@${cleaned} is already taken by another user. Please choose a different handle.`);
-			} else {
-				setHandleStatus('available');
-				setHandleErrorMsg(null);
+				return;
 			}
+
+			// Check 2: Check if current authenticated email already owns a different handle
+			if (authUser) {
+				const existingProfile = await getProfileByAuthUser(authUser);
+				if (existingProfile && existingProfile.handle && existingProfile.handle !== cleaned) {
+					setHandleStatus('taken');
+					setHandleErrorMsg(`Your account (${authUser.email}) is already linked to @${existingProfile.handle}. Each email can only be linked to 1 handle.`);
+					return;
+				}
+			}
+
+			setHandleStatus('available');
+			setHandleErrorMsg(null);
 		}, 300);
 
 		return () => clearTimeout(timer);
@@ -215,20 +227,14 @@ export default function App() {
 		fetchFromSupabase();
 	}, [userHandle]);
 
-	// Supabase Auth Listener & Unified Returning User Redirect (Options 1 & 2)
+	// Supabase Auth Listener & Strict 1-to-1 Email to Handle Routing
 	useEffect(() => {
 		getCurrentUser().then(async (user) => {
 			setAuthUser(user);
 			if (user && isLandingPage) {
-				const pendingHandle = localStorage.getItem('pending_claim_handle');
-				if (pendingHandle) {
-					window.location.href = `/@${pendingHandle}?admin=true`;
-					return;
-				}
-
-				// Option 1: Auto-session redirect if user already has a claimed handle
 				const profile = await getProfileByAuthUser(user);
 				if (profile && profile.handle) {
+					localStorage.removeItem('pending_claim_handle');
 					window.location.href = `/@${profile.handle}?admin=true`;
 				}
 			}
@@ -239,20 +245,22 @@ export default function App() {
 			setAuthUser(currentUser);
 
 			if (currentUser) {
+				const existingProfile = await getProfileByAuthUser(currentUser);
+
+				// STRICT 1 EMAIL = 1 HANDLE RULE:
+				// If user already owns a handle in DB, route directly to their existing handle!
+				if (existingProfile && existingProfile.handle) {
+					localStorage.removeItem('pending_claim_handle');
+					window.location.href = `/@${existingProfile.handle}?admin=true`;
+					return;
+				}
+
 				const pendingHandle = localStorage.getItem('pending_claim_handle');
 
 				if (pendingHandle) {
 					await syncUserAndLinksToDatabase(currentUser, pendingHandle, bioData, allUserItems);
 					localStorage.removeItem('pending_claim_handle');
 					window.location.href = `/@${pendingHandle}?admin=true`;
-				} else {
-					// Option 2: Returning user sign in lookup
-					const profile = await getProfileByAuthUser(currentUser);
-					if (profile && profile.handle) {
-						window.location.href = `/@${profile.handle}?admin=true`;
-					} else if (userHandle && userHandle !== 'mayowa') {
-						await syncUserAndLinksToDatabase(currentUser, userHandle, bioData, allUserItems);
-					}
 				}
 			}
 		});
@@ -324,6 +332,19 @@ export default function App() {
 		e.preventDefault();
 		const cleaned = claimInput.trim().toLowerCase().replace(/[^a-z0-9_-]/g, '');
 		if (!cleaned) return;
+
+		// STRICT 1 EMAIL = 1 HANDLE RULE:
+		if (authUser) {
+			const existingProfile = await getProfileByAuthUser(authUser);
+			if (existingProfile && existingProfile.handle && existingProfile.handle !== cleaned) {
+				setHandleStatus('taken');
+				setHandleErrorMsg(`Your account (${authUser.email}) is already linked to @${existingProfile.handle}. Each email can only be linked to 1 handle.`);
+				setTimeout(() => {
+					window.location.href = `/@${existingProfile.handle}?admin=true`;
+				}, 1800);
+				return;
+			}
+		}
 
 		setHandleStatus('checking');
 		const availability = await checkHandleAvailability(cleaned, authUser?.id);
